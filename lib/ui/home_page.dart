@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -322,6 +323,20 @@ class _WeekGridState extends State<_WeekGrid> {
                         sectionCount: widget.semester.sectionCount,
                         drag: _drag,
                         occupied: _buildOccupied(effective),
+                        onTapEmpty: (dayIdx, sec) {
+                          Navigator.of(context).push(
+                            CupertinoPageRoute(
+                              builder: (_) => CourseEditorPage(
+                                prefill: (
+                                  dayOfWeek: dayIdx + 1,
+                                  startSection: sec,
+                                  endSection: sec,
+                                  week: widget.week,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                         onStart: (dayIdx, sec) =>
                             setState(() => _drag = (dayIdx: dayIdx, startSec: sec, endSec: sec)),
                         onUpdate: (sec) {
@@ -606,7 +621,11 @@ class _GridPainter extends CustomPainter {
   }
 }
 
-/// 透明拖选层。命中已有课程块时不启动拖选,让事件落到 CourseBlock 的 onTap。
+/// 透明拖选层。
+/// - 单点空格子 → 直接进编辑页,单节预填。
+/// - 长按空格子 → 进入拖选态(轻震动),按住再向下滑可扩展多节,松手建课。
+/// - 命中已有课程块时不吃事件,让 CourseBlock 自己的 onTap 处理。
+/// - 普通竖滑 / 横滑不吃,避免和 SingleChildScrollView / PageView 冲突。
 class _DragSelectionOverlay extends StatelessWidget {
   const _DragSelectionOverlay({
     required this.timeColWidth,
@@ -619,6 +638,7 @@ class _DragSelectionOverlay extends StatelessWidget {
     required this.onUpdate,
     required this.onEnd,
     required this.onCancel,
+    required this.onTapEmpty,
   });
 
   final double timeColWidth;
@@ -631,6 +651,7 @@ class _DragSelectionOverlay extends StatelessWidget {
   final void Function(int sec) onUpdate;
   final VoidCallback onEnd;
   final VoidCallback onCancel;
+  final void Function(int dayIdx, int sec) onTapEmpty;
 
   (int dayIdx, int sec)? _hit(Offset local) {
     final dx = local.dx - timeColWidth;
@@ -642,41 +663,38 @@ class _DragSelectionOverlay extends StatelessWidget {
     return (dayIdx, sec);
   }
 
+  bool _isOccupied(int dayIdx, int sec) =>
+      occupied.contains(dayIdx * 1000 + sec);
+
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
       child: GestureDetector(
+        // translucent: 空白区吃事件,但不吞掉纵/横滑;有现存 GestureRecognizer
+        // 竞争时,长按 / tap 比 scroll 优先级高,竖滑不命中。
         behavior: HitTestBehavior.translucent,
-        onTapDown: (d) {
+        onTapUp: (d) {
           final hit = _hit(d.localPosition);
           if (hit == null) return;
-          final key = hit.$1 * 1000 + hit.$2;
-          if (occupied.contains(key)) return;
-          // 单点:同 start/end,松手时触发
-          onStart(hit.$1, hit.$2);
+          if (_isOccupied(hit.$1, hit.$2)) return;
+          onTapEmpty(hit.$1, hit.$2);
         },
-        onTapUp: (_) {
-          if (drag != null) onEnd();
-        },
-        onTapCancel: onCancel,
-        onPanStart: (d) {
+        onLongPressStart: (d) {
           final hit = _hit(d.localPosition);
           if (hit == null) return;
-          final key = hit.$1 * 1000 + hit.$2;
-          if (occupied.contains(key)) {
-            onCancel();
-            return;
-          }
+          if (_isOccupied(hit.$1, hit.$2)) return;
+          HapticFeedback.mediumImpact();
           onStart(hit.$1, hit.$2);
         },
-        onPanUpdate: (d) {
+        onLongPressMoveUpdate: (d) {
+          if (drag == null) return;
           final sec = (d.localPosition.dy / sectionHeight).floor() + 1;
           onUpdate(sec);
         },
-        onPanEnd: (_) {
+        onLongPressEnd: (_) {
           if (drag != null) onEnd();
         },
-        onPanCancel: onCancel,
+        onLongPressCancel: onCancel,
         child: drag == null
             ? const SizedBox.shrink()
             : Stack(
