@@ -6,22 +6,16 @@ func courseDeepLink(_ id: String) -> URL? {
   URL(string: "schedule://course?id=\(id)")
 }
 
-// MARK: - Header ("我的课表 | 5.9 周六                       第 9 周")
+// MARK: - Header
 
 struct ScheduleHeader: View {
   let payload: TodayPayload
 
   var body: some View {
     HStack(alignment: .firstTextBaseline, spacing: 6) {
-      Text("我的课表")
-        .font(.system(size: 15, weight: .semibold))
-        .foregroundStyle(.primary)
-      Text("|")
-        .font(.system(size: 14))
-        .foregroundStyle(.secondary)
       if let d = payload.dateShort, !d.isEmpty {
         Text(d)
-          .font(.system(size: 14, weight: .medium))
+          .font(.system(size: 15, weight: .semibold))
           .foregroundStyle(.primary)
       }
       if !payload.dayLabel.isEmpty {
@@ -32,7 +26,7 @@ struct ScheduleHeader: View {
       Spacer()
       Text(payload.weekLabel)
         .font(.system(size: 13, weight: .medium))
-        .foregroundStyle(.primary)
+        .foregroundStyle(.secondary)
     }
   }
 }
@@ -53,29 +47,26 @@ struct ScheduleEmpty: View {
   }
 }
 
-// MARK: - Course row (参考图样式:左竖条 + 课名/教师 + 右侧双行时间)
+// MARK: - Course row (medium / large)
 
 struct CourseRow: View {
   let course: CourseItem
   let compact: Bool
 
-  private var startTimeText: String {
-    course.startTime ?? ""
-  }
-  private var endTimeText: String {
-    course.endTime ?? ""
+  private var timeText: String {
+    let s = course.startTime ?? ""
+    let e = course.endTime ?? ""
+    if !s.isEmpty && !e.isEmpty { return "\(s) – \(e)" }
+    if !s.isEmpty { return s }
+    return course.sectionLabel
   }
 
   var body: some View {
     HStack(alignment: .center, spacing: 10) {
-      RoundedRectangle(cornerRadius: 2)
-        .fill(course.accentColor)
-        .frame(width: 4)
-
       VStack(alignment: .leading, spacing: 2) {
         Text(course.name)
           .font(.system(size: compact ? 14 : 15, weight: .bold))
-          .foregroundStyle(.primary)
+          .foregroundStyle(.white)
           .lineLimit(1)
         let sub = [course.teacher, course.location]
           .filter { !$0.isEmpty }
@@ -83,34 +74,59 @@ struct CourseRow: View {
         if !sub.isEmpty {
           Text(sub)
             .font(.system(size: compact ? 11 : 12))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.white.opacity(0.85))
             .lineLimit(1)
         }
       }
 
       Spacer(minLength: 4)
 
-      VStack(alignment: .trailing, spacing: 2) {
-        if !startTimeText.isEmpty {
-          Text(startTimeText)
-            .font(.system(size: compact ? 13 : 14, weight: .semibold))
-            .foregroundStyle(.primary)
-            .monospacedDigit()
-        }
-        if !endTimeText.isEmpty {
-          Text(endTimeText)
-            .font(.system(size: compact ? 13 : 14, weight: .semibold))
-            .foregroundStyle(.secondary)
-            .monospacedDigit()
-        }
-      }
+      Text(timeText)
+        .font(.system(size: compact ? 12 : 13, weight: .semibold))
+        .foregroundStyle(.white.opacity(0.9))
+        .monospacedDigit()
+        .lineLimit(1)
     }
-    .padding(.horizontal, 10)
+    .padding(.horizontal, 12)
     .padding(.vertical, compact ? 8 : 10)
     .background(
-      RoundedRectangle(cornerRadius: 14, style: .continuous)
-        .fill(Color.black.opacity(0.22))
+      RoundedRectangle(cornerRadius: 12, style: .continuous)
+        .fill(course.bgColor)
     )
+  }
+}
+
+// MARK: - Small row (2x2 专用)
+
+struct SmallCourseRow: View {
+  let course: CourseItem
+
+  var body: some View {
+    HStack(alignment: .top, spacing: 6) {
+      Circle()
+        .fill(course.accentColor)
+        .frame(width: 6, height: 6)
+        .padding(.top, 5)
+      VStack(alignment: .leading, spacing: 1) {
+        Text(course.name)
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundStyle(.primary)
+          .lineLimit(1)
+        if !course.location.isEmpty {
+          Text(course.location)
+            .font(.system(size: 10))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        }
+      }
+      Spacer(minLength: 4)
+      if let t = course.startTime, !t.isEmpty {
+        Text(t)
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundStyle(.primary)
+          .monospacedDigit()
+      }
+    }
   }
 }
 
@@ -119,31 +135,40 @@ struct CourseRow: View {
 struct SmallScheduleView: View {
   let entry: ScheduleEntry
 
-  private var next: CourseItem? { entry.payload.courses.first }
-
   var body: some View {
-    VStack(alignment: .leading, spacing: 8) {
+    let shown = Array(entry.payload.upcomingCourses(now: entry.date).prefix(2))
+
+    VStack(alignment: .leading, spacing: 6) {
       HStack(alignment: .firstTextBaseline) {
         if !entry.payload.dayLabel.isEmpty {
           Text(entry.payload.dayLabel)
-            .font(.system(size: 13, weight: .semibold))
+            .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(Color(red: 1.0, green: 0.23, blue: 0.33))
         }
         Spacer()
         Text(entry.payload.weekLabel)
-          .font(.system(size: 11))
+          .font(.system(size: 10))
           .foregroundStyle(.secondary)
       }
 
-      if let c = next, let url = courseDeepLink(c.id) {
-        Link(destination: url) {
-          CourseRow(course: c, compact: true)
-        }
-      } else {
+      if shown.isEmpty {
         ScheduleEmpty()
+      } else {
+        ForEach(Array(shown.enumerated()), id: \.element.id) { idx, c in
+          if let url = courseDeepLink(c.id) {
+            Link(destination: url) { SmallCourseRow(course: c) }
+          } else {
+            SmallCourseRow(course: c)
+          }
+          if idx < shown.count - 1 {
+            Divider().opacity(0.2)
+          }
+        }
       }
       Spacer(minLength: 0)
     }
+    .padding(.horizontal, 12)
+    .padding(.vertical, 10)
   }
 }
 
@@ -154,13 +179,15 @@ struct ListScheduleView: View {
   let maxRows: Int
 
   var body: some View {
+    let shown = Array(entry.payload.upcomingCourses(now: entry.date).prefix(maxRows))
+
     VStack(alignment: .leading, spacing: 10) {
       ScheduleHeader(payload: entry.payload)
-      if entry.payload.courses.isEmpty {
+      if shown.isEmpty {
         ScheduleEmpty()
       } else {
         VStack(spacing: 6) {
-          ForEach(entry.payload.courses.prefix(maxRows)) { c in
+          ForEach(shown) { c in
             if let url = courseDeepLink(c.id) {
               Link(destination: url) {
                 CourseRow(course: c, compact: maxRows > 3)
@@ -173,5 +200,7 @@ struct ListScheduleView: View {
         Spacer(minLength: 0)
       }
     }
+    .padding(.horizontal, 14)
+    .padding(.vertical, 12)
   }
 }

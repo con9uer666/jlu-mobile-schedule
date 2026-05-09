@@ -18,8 +18,9 @@ struct ScheduleProvider: TimelineProvider {
   func getTimeline(in context: Context, completion: @escaping (Timeline<ScheduleEntry>) -> Void) {
     let now = Date()
     let entry = ScheduleEntry(date: now, payload: PayloadStore.load())
-    // 30 分钟刷一次兜底;Dart 侧数据变化时会主动 reloadAllTimelines。
-    let next = Calendar.current.date(byAdding: .minute, value: 30, to: now) ?? now.addingTimeInterval(1800)
+    // 15 分钟刷一次兜底;Dart 侧数据变化时会主动 reloadAllTimelines。
+    // 小粒度是为了配合"已下课则消失"的过滤逻辑。
+    let next = Calendar.current.date(byAdding: .minute, value: 15, to: now) ?? now.addingTimeInterval(900)
     completion(Timeline(entries: [entry], policy: .after(next)))
   }
 }

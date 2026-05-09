@@ -26,7 +26,7 @@ struct ScheduleWidgetEntryView: View {
     case .systemMedium:
       ListScheduleView(entry: entry, maxRows: 3)
     default:
-      ListScheduleView(entry: entry, maxRows: 6)
+      ListScheduleView(entry: entry, maxRows: 5)
     }
   }
 }

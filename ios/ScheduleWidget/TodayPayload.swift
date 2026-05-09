@@ -18,6 +18,23 @@ struct TodayPayload: Decodable {
     semesterName: "",
     courses: []
   )
+
+  /// 今日剩余课程:endTime(HH:mm)解析后 >= now 才留。
+  /// 解析失败的 defensive 保留,避免旧数据突然掉课。
+  func upcomingCourses(now: Date = Date()) -> [CourseItem] {
+    let cal = Calendar.current
+    let comps = cal.dateComponents([.year, .month, .day], from: now)
+    return courses.filter { c in
+      guard let end = c.endTime, !end.isEmpty else { return true }
+      let parts = end.split(separator: ":").compactMap { Int($0) }
+      guard parts.count == 2 else { return true }
+      var dc = comps
+      dc.hour = parts[0]
+      dc.minute = parts[1]
+      guard let endDate = cal.date(from: dc) else { return true }
+      return endDate >= now
+    }
+  }
 }
 
 struct CourseItem: Decodable, Identifiable {

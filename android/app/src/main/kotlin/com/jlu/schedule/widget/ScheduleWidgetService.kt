@@ -29,7 +29,7 @@ class ScheduleRemoteViewsFactory(
         items = if (raw == null) emptyList() else {
             runCatching {
                 val arr = JSONObject(raw).optJSONArray("courses") ?: JSONArray()
-                (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }
+                BaseScheduleWidgetProvider.filterUpcoming(arr)
             }.getOrDefault(emptyList())
         }
     }
@@ -49,7 +49,7 @@ class ScheduleRemoteViewsFactory(
         val location = item.optString("location")
         val startTime = item.optString("startTime")
         val endTime = item.optString("endTime")
-        val accentHex = item.optString("colorAccent")
+        val bgHex = item.optString("colorBg")
 
         views.setTextViewText(R.id.item_name, name)
         val sub = buildString {
@@ -61,21 +61,17 @@ class ScheduleRemoteViewsFactory(
         }
         views.setTextViewText(R.id.item_sub, sub)
 
-        // 时间:首选 startTime / endTime,缺省时 fallback 到节次编号
         val start = item.optInt("startSection")
         val end = item.optInt("endSection")
-        views.setTextViewText(
-            R.id.item_time_start,
-            if (startTime.isNotEmpty()) startTime else "第${start}节"
-        )
-        views.setTextViewText(
-            R.id.item_time_end,
-            if (endTime.isNotEmpty()) endTime else "第${end}节"
-        )
+        val timeText = when {
+            startTime.isNotEmpty() && endTime.isNotEmpty() -> "$startTime – $endTime"
+            startTime.isNotEmpty() -> startTime
+            else -> "第 ${start}-${end} 节"
+        }
+        views.setTextViewText(R.id.item_time, timeText)
 
-        // 左侧色条:直接换底色
-        val accent = parseColor(accentHex, Color.parseColor("#FF3D5AFE"))
-        views.setInt(R.id.item_accent, "setBackgroundColor", accent)
+        val bg = parseColor(bgHex, Color.parseColor("#FF3D5AFE"))
+        views.setInt(R.id.item_root, "setBackgroundColor", bg)
 
         // 传 courseId 给 template
         val fill = Intent().apply {

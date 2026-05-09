@@ -7,16 +7,19 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
+import android.view.View
 import android.widget.RemoteViews
 import com.jlu.schedule.MainActivity
 import com.jlu.schedule.R
 import es.antonborri.home_widget.HomeWidgetPlugin
+import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Calendar
 
 /** 三种尺寸共享的渲染逻辑。
  *
  * Dart 侧把整天课程序列化进 SharedPreferences (key=today_payload) 后,
- * 发 APPWIDGET_UPDATE 广播过来;这里读、渲染就行。
+ * 发 APPWIDGET_UPDATE 广播过来;这里读、按当前时间过滤、渲染。
  */
 abstract class BaseScheduleWidgetProvider : AppWidgetProvider() {
 
@@ -59,66 +62,100 @@ abstract class BaseScheduleWidgetProvider : AppWidgetProvider() {
     private fun renderSmall(
         context: Context,
         views: RemoteViews,
-        courses: org.json.JSONArray?,
+        courses: JSONArray?,
         weekLabel: String,
         dayLabel: String
     ) {
         views.setTextViewText(R.id.widget_week, weekLabel)
         views.setTextViewText(R.id.widget_day, dayLabel)
-        val next = nextCourse(courses)
-        if (next == null) {
-            views.setTextViewText(R.id.widget_small_main, "今天没课")
-            views.setTextViewText(R.id.widget_small_sub, "")
-            views.setTextViewText(R.id.widget_small_time, "")
-        } else {
-            views.setTextViewText(R.id.widget_small_main, next.optString("name"))
-            val loc = next.optString("location")
-            val teacher = next.optString("teacher")
-            val sub = buildString {
-                if (teacher.isNotEmpty()) append(teacher)
-                if (loc.isNotEmpty()) {
-                    if (isNotEmpty()) append(" · ")
-                    append(loc)
-                }
-            }
-            views.setTextViewText(R.id.widget_small_sub, sub)
-            val start = next.optString("startTime")
-            val end = next.optString("endTime")
-            val line = when {
-                start.isNotEmpty() && end.isNotEmpty() -> "$start - $end"
-                start.isNotEmpty() -> start
-                else -> "第 ${next.optInt("startSection")}-${next.optInt("endSection")} 节"
-            }
-            views.setTextViewText(R.id.widget_small_time, line)
+
+        val shown = filterUpcoming(courses).take(2)
+        bindSmallRow(views, 0, shown.getOrNull(0))
+        bindSmallRow(views, 1, shown.getOrNull(1))
+        views.setViewVisibility(
+            R.id.small_empty,
+            if (shown.isEmpty()) View.VISIBLE else View.GONE
+        )
+
+        views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context))
+    }
+
+    private fun bindSmallRow(views: RemoteViews, idx: Int, c: JSONObject?) {
+        val ids = smallRowIds(idx)
+        if (c == null) {
+            views.setViewVisibility(ids.row, View.GONE)
+            return
         }
-        views.setOnClickPendingIntent(R.id.widget_small_main, openAppIntent(context))
-        views.setOnClickPendingIntent(R.id.widget_small_sub, openAppIntent(context))
-        views.setOnClickPendingIntent(R.id.widget_small_time, openAppIntent(context))
-        views.setOnClickPendingIntent(R.id.widget_day, openAppIntent(context))
-        views.setOnClickPendingIntent(R.id.widget_week, openAppIntent(context))
+        views.setViewVisibility(ids.row, View.VISIBLE)
+        views.setTextViewText(ids.name, c.optString("name"))
+        val loc = c.optString("location")
+        views.setTextViewText(ids.loc, loc)
+        views.setViewVisibility(
+            ids.loc,
+            if (loc.isEmpty()) View.GONE else View.VISIBLE
+        )
+        val start = c.optString("startTime")
+        val timeText = if (start.isNotEmpty()) {
+            start
+        } else {
+            "第 ${c.optInt("startSection")}-${c.optInt("endSection")} 节"
+        }
+        views.setTextViewText(ids.time, timeText)
+        val accent = parseColor(c.optString("colorAccent"), Color.WHITE)
+        views.setInt(ids.dot, "setColorFilter", accent)
+    }
+
+    private data class SmallRowIds(
+        val row: Int,
+        val dot: Int,
+        val name: Int,
+        val loc: Int,
+        val time: Int,
+    )
+
+    private fun smallRowIds(idx: Int): SmallRowIds = when (idx) {
+        0 -> SmallRowIds(
+            R.id.small_row1,
+            R.id.small_row1_dot,
+            R.id.small_row1_name,
+            R.id.small_row1_loc,
+            R.id.small_row1_time,
+        )
+        else -> SmallRowIds(
+            R.id.small_row2,
+            R.id.small_row2_dot,
+            R.id.small_row2_name,
+            R.id.small_row2_loc,
+            R.id.small_row2_time,
+        )
     }
 
     private fun renderList(
         context: Context,
         views: RemoteViews,
         widgetId: Int,
-        courses: org.json.JSONArray?,
+        courses: JSONArray?,
         weekLabel: String,
         dayLabel: String,
         dateShort: String
     ) {
-        views.setTextViewText(R.id.widget_title, "我的课表")
         views.setTextViewText(R.id.widget_date, dateShort)
         views.setTextViewText(R.id.widget_day, dayLabel)
         views.setTextViewText(R.id.widget_week, weekLabel)
-        views.setOnClickPendingIntent(R.id.widget_title, openAppIntent(context))
         views.setOnClickPendingIntent(R.id.widget_date, openAppIntent(context))
         views.setOnClickPendingIntent(R.id.widget_day, openAppIntent(context))
         views.setOnClickPendingIntent(R.id.widget_week, openAppIntent(context))
 
-        val hasCourses = courses != null && courses.length() > 0
-        views.setViewVisibility(R.id.widget_empty, if (hasCourses) android.view.View.GONE else android.view.View.VISIBLE)
-        views.setViewVisibility(R.id.widget_list, if (hasCourses) android.view.View.VISIBLE else android.view.View.GONE)
+        val upcoming = filterUpcoming(courses)
+        val hasCourses = upcoming.isNotEmpty()
+        views.setViewVisibility(
+            R.id.widget_empty,
+            if (hasCourses) View.GONE else View.VISIBLE
+        )
+        views.setViewVisibility(
+            R.id.widget_list,
+            if (hasCourses) View.VISIBLE else View.GONE
+        )
 
         if (hasCourses) {
             val svc = Intent(context, ScheduleWidgetService::class.java).apply {
@@ -144,11 +181,6 @@ abstract class BaseScheduleWidgetProvider : AppWidgetProvider() {
         }
     }
 
-    private fun nextCourse(arr: org.json.JSONArray?): JSONObject? {
-        if (arr == null || arr.length() == 0) return null
-        return arr.optJSONObject(0)
-    }
-
     private fun openAppIntent(context: Context): PendingIntent {
         val i = Intent(context, MainActivity::class.java).apply {
             action = Intent.ACTION_MAIN
@@ -167,6 +199,34 @@ abstract class BaseScheduleWidgetProvider : AppWidgetProvider() {
         fun parseColor(hex: String?, fallback: Int): Int {
             if (hex.isNullOrEmpty()) return fallback
             return runCatching { Color.parseColor(hex) }.getOrDefault(fallback)
+        }
+
+        /// endTime(HH:mm)解析后 >= now 的才保留;解析失败默认放行,避免掉课。
+        fun filterUpcoming(
+            arr: JSONArray?,
+            now: Calendar = Calendar.getInstance()
+        ): List<JSONObject> {
+            if (arr == null) return emptyList()
+            val nowMin = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+            val out = mutableListOf<JSONObject>()
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                val end = o.optString("endTime")
+                if (end.isEmpty()) {
+                    out.add(o); continue
+                }
+                val parts = end.split(":")
+                if (parts.size != 2) {
+                    out.add(o); continue
+                }
+                val h = parts[0].toIntOrNull()
+                val m = parts[1].toIntOrNull()
+                if (h == null || m == null) {
+                    out.add(o); continue
+                }
+                if (h * 60 + m >= nowMin) out.add(o)
+            }
+            return out
         }
     }
 }

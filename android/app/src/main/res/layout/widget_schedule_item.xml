@@ -4,23 +4,13 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:background="@drawable/widget_item_background"
-    android:padding="10dp"
+    android:padding="12dp"
     android:gravity="center_vertical">
-
-    <ImageView
-        android:id="@+id/item_accent"
-        android:layout_width="4dp"
-        android:layout_height="match_parent"
-        android:minHeight="34dp"
-        android:background="@drawable/widget_accent_bar"
-        android:contentDescription="@null" />
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:layout_marginStart="10dp"
         android:orientation="vertical">
 
         <TextView
@@ -40,38 +30,21 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:text=""
-            android:textColor="#B3FFFFFF"
+            android:textColor="#E6FFFFFF"
             android:textSize="12sp"
             android:maxLines="1"
             android:ellipsize="end" />
     </LinearLayout>
 
-    <LinearLayout
+    <TextView
+        android:id="@+id/item_time"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_marginStart="8dp"
-        android:gravity="end">
-
-        <TextView
-            android:id="@+id/item_time_start"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textColor="#FFFFFFFF"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:fontFeatureSettings="tnum" />
-
-        <TextView
-            android:id="@+id/item_time_end"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text=""
-            android:textColor="#B3FFFFFF"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:fontFeatureSettings="tnum" />
-    </LinearLayout>
+        android:layout_marginStart="10dp"
+        android:text=""
+        android:textColor="#FFFFFFFF"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:fontFeatureSettings="tnum"
+        android:maxLines="1" />
 </LinearLayout>
