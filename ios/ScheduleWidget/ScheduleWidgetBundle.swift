@@ -31,13 +31,14 @@ struct ScheduleWidgetEntryView: View {
   }
 }
 
-/// iOS 17 起 widget 必须用 .containerBackground 当底,老版本直接透明即可。
+/// iOS 17+:用透明 containerBackground,让 iOS 26 的 Liquid Glass 渲染起作用。
+/// 真正的"深色玻璃"底是在内容层用半透明材质叠出来的,避免挡住系统玻璃层。
 extension View {
   @ViewBuilder
   func widgetBackground() -> some View {
     if #available(iOS 17.0, *) {
       self.containerBackground(for: .widget) {
-        Color(.systemBackground)
+        Color.clear
       }
     } else {
       self.background(Color(.systemBackground))

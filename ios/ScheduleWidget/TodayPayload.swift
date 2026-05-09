@@ -6,6 +6,7 @@ struct TodayPayload: Decodable {
   let updatedAt: Int
   let weekLabel: String
   let dayLabel: String
+  let dateShort: String?
   let semesterName: String
   let courses: [CourseItem]
 
@@ -13,6 +14,7 @@ struct TodayPayload: Decodable {
     updatedAt: 0,
     weekLabel: "未设置学期",
     dayLabel: "",
+    dateShort: nil,
     semesterName: "",
     courses: []
   )
@@ -25,6 +27,8 @@ struct CourseItem: Decodable, Identifiable {
   let location: String
   let startSection: Int
   let endSection: Int
+  let startTime: String?
+  let endTime: String?
   let colorBg: String
   let colorAccent: String
 
