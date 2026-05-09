@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../data/school_provider.dart';
 
@@ -10,6 +10,11 @@ import '../data/school_provider.dart';
 /// 具体行为(入口 URL / UA / 登录判定 / 抓取脚本)全部由传入的 [provider] 决定。
 ///
 /// pop 回来的 bundle 结构见 [SchoolProvider] 注释。
+///
+/// 用 flutter_inappwebview 而不是 webview_flutter 的原因:
+/// 教务系统证书常见问题(国产 CA 未预置 / 域名错配)会让 WKWebView/Chromium
+/// 直接白屏,webview_flutter 不暴露 SSL 错误回调。这里用 InAppWebView 的
+/// onReceivedServerTrustAuthRequest 针对入口域名主动放行。
 class SchoolLoginPage extends StatefulWidget {
   const SchoolLoginPage({super.key, required this.provider});
 
@@ -20,36 +25,25 @@ class SchoolLoginPage extends StatefulWidget {
 }
 
 class _SchoolLoginPageState extends State<SchoolLoginPage> {
-  late final WebViewController _controller;
+  InAppWebViewController? _controller;
   bool _fetching = false;
+  int _progress = 0;
   String _hint = '请用统一身份认证登录,成功后会自动抓课表';
+  late final Set<String> _trustedHosts;
 
   @override
   void initState() {
     super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setUserAgent(widget.provider.userAgent)
-      ..addJavaScriptChannel(
-        'JwappBridge',
-        onMessageReceived: (msg) => _onBridgeMessage(msg.message),
-      )
-      ..setNavigationDelegate(NavigationDelegate(
-        onPageFinished: (url) {
-          if (_fetching) return;
-          if (widget.provider.isLoggedIn(url)) {
-            unawaited(_runFetcher());
-          }
-        },
-      ))
-      ..loadRequest(Uri.parse(widget.provider.entryUrl));
+    _trustedHosts = {
+      Uri.parse(widget.provider.entryUrl).host,
+    };
   }
 
   Future<void> _runFetcher() async {
     _fetching = true;
     setState(() => _hint = '登录成功,正在抓取课表...');
     try {
-      await _controller.runJavaScript(widget.provider.fetcherScript);
+      await _controller?.evaluateJavascript(source: widget.provider.fetcherScript);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -94,10 +88,100 @@ class _SchoolLoginPageState extends State<SchoolLoginPage> {
                       style: const TextStyle(fontSize: 12),
                     ),
                   ),
+                  if (_progress > 0 && _progress < 100)
+                    Text(
+                      '$_progress%',
+                      style: const TextStyle(fontSize: 12),
+                    ),
                 ],
               ),
             ),
-            Expanded(child: WebViewWidget(controller: _controller)),
+            Expanded(
+              child: ColoredBox(
+                color: CupertinoColors.white,
+                child: InAppWebView(
+                  initialUrlRequest: URLRequest(
+                    url: WebUri(widget.provider.entryUrl),
+                  ),
+                  initialSettings: InAppWebViewSettings(
+                    userAgent: widget.provider.userAgent,
+                    javaScriptEnabled: true,
+                    domStorageEnabled: true,
+                    mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+                    useShouldOverrideUrlLoading: false,
+                    transparentBackground: false,
+                  ),
+                  onWebViewCreated: (controller) {
+                    _controller = controller;
+                    controller.addJavaScriptHandler(
+                      handlerName: 'JwappBridge',
+                      callback: (args) {
+                        if (args.isNotEmpty) {
+                          _onBridgeMessage(args.first.toString());
+                        }
+                        return null;
+                      },
+                    );
+                  },
+                  onLoadStart: (_, url) {
+                    if (!mounted) return;
+                    setState(() => _hint = '加载中:$url');
+                  },
+                  onLoadStop: (controller, url) async {
+                    if (!mounted) return;
+                    // 替换 webview_flutter 的 JavaScriptChannel(JwappBridge.postMessage)
+                    // 为 InAppWebView 的 handler。注入一个 shim,让抓取脚本无需改写。
+                    await controller.evaluateJavascript(source: '''
+                      if (!window.JwappBridge) {
+                        window.JwappBridge = {
+                          postMessage: function(msg) {
+                            window.flutter_inappwebview.callHandler('JwappBridge', msg);
+                          }
+                        };
+                      }
+                    ''');
+                    if (!_fetching) {
+                      setState(() => _hint = '已加载:$url');
+                    }
+                    if (_fetching) return;
+                    if (widget.provider.isLoggedIn(url?.toString() ?? '')) {
+                      unawaited(_runFetcher());
+                    }
+                  },
+                  onProgressChanged: (_, p) {
+                    if (!mounted) return;
+                    setState(() => _progress = p);
+                  },
+                  onReceivedServerTrustAuthRequest: (_, challenge) async {
+                    final host = challenge.protectionSpace.host;
+                    // 对入口域名(以及同域子路径)一律放行,解决教务证书 CA 缺失问题。
+                    if (_trustedHosts.any((h) => host == h || host.endsWith('.$h'))) {
+                      return ServerTrustAuthResponse(
+                        action: ServerTrustAuthResponseAction.PROCEED,
+                      );
+                    }
+                    return ServerTrustAuthResponse(
+                      action: ServerTrustAuthResponseAction.CANCEL,
+                    );
+                  },
+                  onReceivedError: (_, request, error) {
+                    if (!mounted) return;
+                    if (!request.isForMainFrame!) return;
+                    setState(() {
+                      _fetching = false;
+                      _hint = '页面加载失败(${error.type}):${error.description}';
+                    });
+                  },
+                  onReceivedHttpError: (_, request, response) {
+                    if (!mounted) return;
+                    if (!request.isForMainFrame!) return;
+                    setState(() {
+                      _hint = 'HTTP ${response.statusCode}:${request.url}';
+                    });
+                  },
+                ),
+              ),
+            ),
           ],
         ),
       ),

@@ -47,9 +47,7 @@ dependencies:
   intl: ^0.19.0
   flutter_secure_storage: ^9.2.2
   html: ^0.15.4
-  webview_flutter: ^4.10.0
-  webview_flutter_android: ^4.1.0
-  webview_flutter_wkwebview: ^3.17.0
+  flutter_inappwebview: ^6.1.5
   home_widget: ^0.7.0
 
 dev_dependencies:
