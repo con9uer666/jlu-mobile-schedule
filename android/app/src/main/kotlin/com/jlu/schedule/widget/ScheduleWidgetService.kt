@@ -47,24 +47,34 @@ class ScheduleRemoteViewsFactory(
         val name = item.optString("name")
         val teacher = item.optString("teacher")
         val location = item.optString("location")
-        val start = item.optInt("startSection")
-        val end = item.optInt("endSection")
+        val startTime = item.optString("startTime")
+        val endTime = item.optString("endTime")
         val accentHex = item.optString("colorAccent")
 
         views.setTextViewText(R.id.item_name, name)
         val sub = buildString {
-            if (location.isNotEmpty()) append(location)
-            if (teacher.isNotEmpty()) {
+            if (teacher.isNotEmpty()) append(teacher)
+            if (location.isNotEmpty()) {
                 if (isNotEmpty()) append(" · ")
-                append(teacher)
+                append(location)
             }
         }
         views.setTextViewText(R.id.item_sub, sub)
-        views.setTextViewText(R.id.item_section, "${start}-${end}")
 
-        val accent = parseColor(accentHex, Color.parseColor("#FF3D5AFE"))
-        views.setTextColor(R.id.item_section, accent)
+        // 时间:首选 startTime / endTime,缺省时 fallback 到节次编号
+        val start = item.optInt("startSection")
+        val end = item.optInt("endSection")
+        views.setTextViewText(
+            R.id.item_time_start,
+            if (startTime.isNotEmpty()) startTime else "第${start}节"
+        )
+        views.setTextViewText(
+            R.id.item_time_end,
+            if (endTime.isNotEmpty()) endTime else "第${end}节"
+        )
+
         // 左侧色条:直接换底色
+        val accent = parseColor(accentHex, Color.parseColor("#FF3D5AFE"))
         views.setInt(R.id.item_accent, "setBackgroundColor", accent)
 
         // 传 courseId 给 template

@@ -32,17 +32,22 @@ abstract class BaseScheduleWidgetProvider : AppWidgetProvider() {
     ) {
         val prefs = HomeWidgetPlugin.getData(context)
         val raw = prefs.getString("today_payload", null)
-        val weekLabel = prefs.getString("today_week_label", "") ?: ""
-        val dayLabel = prefs.getString("today_day_label", "") ?: ""
-
         val payload = raw?.let { runCatching { JSONObject(it) }.getOrNull() }
+
+        val weekLabel = payload?.optString("weekLabel")?.takeIf { it.isNotEmpty() }
+            ?: prefs.getString("today_week_label", "") ?: ""
+        val dayLabel = payload?.optString("dayLabel")?.takeIf { it.isNotEmpty() }
+            ?: prefs.getString("today_day_label", "") ?: ""
+        val dateShort = payload?.optString("dateShort") ?: ""
+
         val courses = payload?.optJSONArray("courses")
 
         for (id in ids) {
             val views = RemoteViews(context.packageName, layoutRes)
             when (variant) {
                 Variant.SMALL -> renderSmall(context, views, courses, weekLabel, dayLabel)
-                Variant.MEDIUM, Variant.LARGE -> renderList(context, views, id, courses, weekLabel, dayLabel)
+                Variant.MEDIUM, Variant.LARGE ->
+                    renderList(context, views, id, courses, weekLabel, dayLabel, dateShort)
             }
             manager.updateAppWidget(id, views)
             if (variant != Variant.SMALL && courses != null && courses.length() > 0) {
@@ -58,25 +63,38 @@ abstract class BaseScheduleWidgetProvider : AppWidgetProvider() {
         weekLabel: String,
         dayLabel: String
     ) {
-        views.setTextViewText(R.id.widget_week, "$weekLabel · $dayLabel")
+        views.setTextViewText(R.id.widget_week, weekLabel)
+        views.setTextViewText(R.id.widget_day, dayLabel)
         val next = nextCourse(courses)
         if (next == null) {
             views.setTextViewText(R.id.widget_small_main, "今天没课")
             views.setTextViewText(R.id.widget_small_sub, "")
+            views.setTextViewText(R.id.widget_small_time, "")
         } else {
             views.setTextViewText(R.id.widget_small_main, next.optString("name"))
-            val s = next.optInt("startSection")
-            val e = next.optInt("endSection")
             val loc = next.optString("location")
+            val teacher = next.optString("teacher")
             val sub = buildString {
-                append("第${s}-${e}节")
-                if (loc.isNotEmpty()) append(" · ").append(loc)
+                if (teacher.isNotEmpty()) append(teacher)
+                if (loc.isNotEmpty()) {
+                    if (isNotEmpty()) append(" · ")
+                    append(loc)
+                }
             }
             views.setTextViewText(R.id.widget_small_sub, sub)
+            val start = next.optString("startTime")
+            val end = next.optString("endTime")
+            val line = when {
+                start.isNotEmpty() && end.isNotEmpty() -> "$start - $end"
+                start.isNotEmpty() -> start
+                else -> "第 ${next.optInt("startSection")}-${next.optInt("endSection")} 节"
+            }
+            views.setTextViewText(R.id.widget_small_time, line)
         }
         views.setOnClickPendingIntent(R.id.widget_small_main, openAppIntent(context))
         views.setOnClickPendingIntent(R.id.widget_small_sub, openAppIntent(context))
-        views.setOnClickPendingIntent(R.id.widget_title, openAppIntent(context))
+        views.setOnClickPendingIntent(R.id.widget_small_time, openAppIntent(context))
+        views.setOnClickPendingIntent(R.id.widget_day, openAppIntent(context))
         views.setOnClickPendingIntent(R.id.widget_week, openAppIntent(context))
     }
 
@@ -86,13 +104,17 @@ abstract class BaseScheduleWidgetProvider : AppWidgetProvider() {
         widgetId: Int,
         courses: org.json.JSONArray?,
         weekLabel: String,
-        dayLabel: String
+        dayLabel: String,
+        dateShort: String
     ) {
-        views.setTextViewText(R.id.widget_week, weekLabel)
+        views.setTextViewText(R.id.widget_title, "我的课表")
+        views.setTextViewText(R.id.widget_date, dateShort)
         views.setTextViewText(R.id.widget_day, dayLabel)
+        views.setTextViewText(R.id.widget_week, weekLabel)
         views.setOnClickPendingIntent(R.id.widget_title, openAppIntent(context))
-        views.setOnClickPendingIntent(R.id.widget_week, openAppIntent(context))
+        views.setOnClickPendingIntent(R.id.widget_date, openAppIntent(context))
         views.setOnClickPendingIntent(R.id.widget_day, openAppIntent(context))
+        views.setOnClickPendingIntent(R.id.widget_week, openAppIntent(context))
 
         val hasCourses = courses != null && courses.length() > 0
         views.setViewVisibility(R.id.widget_empty, if (hasCourses) android.view.View.GONE else android.view.View.VISIBLE)
