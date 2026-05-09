@@ -12,6 +12,10 @@ class WidgetLaunchHandler {
   static const _channel = MethodChannel('com.jlu.schedule/widget');
   final GlobalKey<NavigatorState> _navigatorKey;
 
+  /// 当前 sheet 展示的 courseId;null 表示没有 sheet。
+  /// 用来防止重复点 widget 叠多层 sheet。
+  String? _openCourseId;
+
   static Future<WidgetLaunchHandler> attach(
     GlobalKey<NavigatorState> navigatorKey,
   ) async {
@@ -47,6 +51,21 @@ class WidgetLaunchHandler {
     if (course == null) return;
     final ctx = _navigatorKey.currentContext;
     if (ctx == null) return;
-    showCourseDetailSheet(ctx, course);
+
+    // 同一门课已经开着 → 什么也不做
+    if (_openCourseId == id) return;
+
+    // 开着别的课 → 先把旧 sheet 关掉,再弹新的
+    if (_openCourseId != null) {
+      Navigator.of(ctx, rootNavigator: true).maybePop();
+    }
+
+    _openCourseId = id;
+    showCourseDetailSheet(ctx, course).whenComplete(() {
+      // 仅当当前展示的还是 id(没被后来的 open 覆盖)才清状态
+      if (_openCourseId == id) {
+        _openCourseId = null;
+      }
+    });
   }
 }
