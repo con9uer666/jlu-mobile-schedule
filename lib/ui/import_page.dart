@@ -2,7 +2,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/course.dart';
+import '../data/providers/registry.dart';
 import '../data/raw_entry.dart';
+import '../data/school_provider.dart';
 import '../data/semester.dart';
 import '../data/storage.dart';
 import '../state/schedule_providers.dart';
@@ -17,9 +19,45 @@ class ImportPage extends ConsumerStatefulWidget {
 }
 
 class _ImportPageState extends ConsumerState<ImportPage> {
+  static const _prefKey = 'import.lastProviderId';
+
   bool _busy = false;
   String? _error;
   String _status = '';
+  late SchoolProvider _provider;
+
+  @override
+  void initState() {
+    super.initState();
+    final savedId = AppStorage.settings.get(_prefKey) as String?;
+    _provider = (savedId == null ? null : findProvider(savedId)) ??
+        defaultProvider;
+  }
+
+  Future<void> _pickSchool() async {
+    final picked = await showCupertinoModalPopup<SchoolProvider>(
+      context: context,
+      builder: (ctx) => CupertinoActionSheet(
+        title: const Text('选择学校教务'),
+        actions: [
+          for (final p in schoolProviders)
+            CupertinoActionSheetAction(
+              onPressed: () => Navigator.of(ctx).pop(p),
+              child: Text(p.displayName),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          isDefaultAction: true,
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('取消'),
+        ),
+      ),
+    );
+    if (picked != null && picked.id != _provider.id) {
+      await AppStorage.settings.put(_prefKey, picked.id);
+      if (mounted) setState(() => _provider = picked);
+    }
+  }
 
   Future<void> _start() async {
     setState(() {
@@ -29,7 +67,9 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     });
 
     final bundle = await Navigator.of(context).push<Map<String, dynamic>>(
-      CupertinoPageRoute(builder: (_) => const JlujwappLoginPage()),
+      CupertinoPageRoute(
+        builder: (_) => SchoolLoginPage(provider: _provider),
+      ),
     );
     if (bundle == null) {
       if (mounted) setState(() => _busy = false);
@@ -79,30 +119,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     final totalWeeks = zzc is int ? zzc : int.parse('$zzc');
     final rows = (bundle['rows'] as List).cast<Map>();
 
-    final entries = <CourseRawEntry>[];
-    for (final row in rows) {
-      final name = row['KCM'] as String? ?? '';
-      if (name.isEmpty) continue;
-      final dayOfWeek = (row['SKXQ'] as num?)?.toInt() ?? 0;
-      final startSection = (row['KSJC'] as num?)?.toInt() ?? 0;
-      final endSection = (row['JSJC'] as num?)?.toInt() ?? startSection;
-      if (dayOfWeek == 0 || startSection == 0) continue;
-      final mask = row['SKZC'] as String? ?? '';
-      final weeks = <int>[];
-      for (var i = 0; i < mask.length; i++) {
-        if (mask[i] == '1') weeks.add(i + 1);
-      }
-      if (weeks.isEmpty) continue;
-      entries.add(CourseRawEntry(
-        name: name,
-        teacher: row['SKJS'] as String? ?? '',
-        location: row['JASMC'] as String? ?? '',
-        dayOfWeek: dayOfWeek,
-        startSection: startSection,
-        endSection: endSection,
-        weeks: weeks,
-      ));
-    }
+    final entries = _provider.parseRows(rows);
 
     final semester = Semester(
       id: xnxqdm,
@@ -141,7 +158,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   }
 
   int _maxEndSection(List<CourseRawEntry> entries) {
-    var m = 12;
+    var m = _provider.minSectionCount;
     for (final e in entries) {
       if (e.endSection > m) m = e.endSection;
     }
@@ -156,11 +173,28 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            const Text(
-              '吉林大学 iedu 教务系统',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            CupertinoFormSection.insetGrouped(
+              header: const Text('学校'),
+              margin: EdgeInsets.zero,
+              children: [
+                CupertinoFormRow(
+                  prefix: const Text('教务系统'),
+                  child: CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: _busy ? null : _pickSchool,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_provider.displayName),
+                        const SizedBox(width: 4),
+                        const Icon(CupertinoIcons.chevron_right, size: 14),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             Text(
               '点击下方按钮会打开学校统一身份认证登录页,登录成功后会自动返回并抓取本学期课表。账号密码不经过本 App。',
               style: TextStyle(

@@ -4,22 +4,22 @@ import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-/// 吉大教务登录 + 抓取 WebView。
-///
-/// 401 原因是关键 session cookie 是 HttpOnly,`document.cookie` 拿不到,
-/// Dio 拿不全 cookie 就会 401。所以干脆在 WebView 里用 fetch 直接调接口,
-/// 同源自带完整 cookie,证书也走系统信任链。Dart 端只解析结果。
-class JlujwappLoginPage extends StatefulWidget {
-  const JlujwappLoginPage({super.key});
+import '../data/school_provider.dart';
 
-  static const _entryUrl =
-      'https://iedu.jlu.edu.cn/jwapp/sys/wdkb/*default/index.do?THEME=indigo&EMAP_LANG=zh';
+/// 通用学校教务登录 + 抓取 WebView。
+/// 具体行为(入口 URL / UA / 登录判定 / 抓取脚本)全部由传入的 [provider] 决定。
+///
+/// pop 回来的 bundle 结构见 [SchoolProvider] 注释。
+class SchoolLoginPage extends StatefulWidget {
+  const SchoolLoginPage({super.key, required this.provider});
+
+  final SchoolProvider provider;
 
   @override
-  State<JlujwappLoginPage> createState() => _JlujwappLoginPageState();
+  State<SchoolLoginPage> createState() => _SchoolLoginPageState();
 }
 
-class _JlujwappLoginPageState extends State<JlujwappLoginPage> {
+class _SchoolLoginPageState extends State<SchoolLoginPage> {
   late final WebViewController _controller;
   bool _fetching = false;
   String _hint = '请用统一身份认证登录,成功后会自动抓课表';
@@ -29,10 +29,7 @@ class _JlujwappLoginPageState extends State<JlujwappLoginPage> {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setUserAgent(
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
-        'AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
-      )
+      ..setUserAgent(widget.provider.userAgent)
       ..addJavaScriptChannel(
         'JwappBridge',
         onMessageReceived: (msg) => _onBridgeMessage(msg.message),
@@ -40,26 +37,19 @@ class _JlujwappLoginPageState extends State<JlujwappLoginPage> {
       ..setNavigationDelegate(NavigationDelegate(
         onPageFinished: (url) {
           if (_fetching) return;
-          if (_isLoggedInUrl(url)) {
+          if (widget.provider.isLoggedIn(url)) {
             unawaited(_runFetcher());
           }
         },
       ))
-      ..loadRequest(Uri.parse(JlujwappLoginPage._entryUrl));
-  }
-
-  bool _isLoggedInUrl(String url) {
-    if (!url.contains('iedu.jlu.edu.cn')) return false;
-    if (url.contains('/jwapp/sys/wdkb/')) return true;
-    return false;
+      ..loadRequest(Uri.parse(widget.provider.entryUrl));
   }
 
   Future<void> _runFetcher() async {
     _fetching = true;
     setState(() => _hint = '登录成功,正在抓取课表...');
-    // 注入脚本后立刻执行。一次性把三个接口串起来,最后通过 Bridge 返回。
     try {
-      await _controller.runJavaScript(_fetcherScript);
+      await _controller.runJavaScript(widget.provider.fetcherScript);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -82,72 +72,12 @@ class _JlujwappLoginPageState extends State<JlujwappLoginPage> {
     Navigator.of(context).pop(decoded);
   }
 
-  static const _fetcherScript = r'''
-(async () => {
-  const post = async (path, body) => {
-    const r = await fetch(path, {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      body: body || '',
-    });
-    if (!r.ok) throw new Error(path + ' HTTP ' + r.status);
-    const j = await r.json();
-    if (j.code !== '0' && j.code !== 0) {
-      throw new Error(path + ' code=' + j.code);
-    }
-    return j;
-  };
-  try {
-    const term = await post('/jwapp/sys/wdkb/modules/jshkcb/dqxnxq.do');
-    const termRow = ((term.datas || {}).dqxnxq || {}).rows || [];
-    if (!termRow.length) throw new Error('dqxnxq 空');
-    const xnxqdm = termRow[0].DM;
-    const termName = termRow[0].MC || '';
-    const parts = xnxqdm.split('-');
-    if (parts.length < 3) throw new Error('xnxqdm 格式 ' + xnxqdm);
-    const xn = parts[0] + '-' + parts[1];
-    const xq = parts[2];
-
-    const meta = await post(
-      '/jwapp/sys/wdkb/modules/jshkcb/cxjcs.do',
-      'XN=' + encodeURIComponent(xn) + '&XQ=' + encodeURIComponent(xq)
-    );
-    const metaRow = ((meta.datas || {}).cxjcs || {}).rows || [];
-    if (!metaRow.length) throw new Error('cxjcs 空');
-    const ksrq = metaRow[0].XQKSRQ;
-    const zzc = metaRow[0].ZZC;
-
-    const sch = await post(
-      '/jwapp/sys/wdkb/modules/xskcb/cxxszhxqkb.do',
-      'XNXQDM=' + encodeURIComponent(xnxqdm)
-    );
-    const rows = ((sch.datas || {}).cxxszhxqkb || {}).rows || [];
-
-    JwappBridge.postMessage(JSON.stringify({
-      ok: true,
-      xnxqdm: xnxqdm,
-      termName: termName,
-      startDate: ksrq,
-      totalWeeks: zzc,
-      rows: rows,
-    }));
-  } catch (e) {
-    JwappBridge.postMessage(JSON.stringify({
-      ok: false,
-      error: (e && e.message) ? e.message : String(e),
-    }));
-  }
-})();
-''';
-
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(middle: Text('登录教务')),
+      navigationBar: CupertinoNavigationBar(
+        middle: Text('登录 ${widget.provider.displayName}'),
+      ),
       child: SafeArea(
         child: Column(
           children: [

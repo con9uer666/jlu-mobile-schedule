@@ -747,7 +747,14 @@ class _CourseBlock extends StatelessWidget {
             DecoratedBox(
               decoration: BoxDecoration(
                 color: accent,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.25),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(6, 6, 4, 4),
