@@ -23,9 +23,7 @@ class CurrentSemesterController extends StateNotifier<Semester?> {
   }
 
   Future<void> setCurrent(Semester semester) async {
-    if (!AppStorage.semesters.containsKey(semester.id)) {
-      await AppStorage.semesters.put(semester.id, semester);
-    }
+    await AppStorage.semesters.put(semester.id, semester);
     await AppStorage.settings.put('currentSemesterId', semester.id);
     state = semester;
   }

@@ -13,32 +13,6 @@ class WidgetBridge {
   static const _iosName = 'ScheduleWidget';
   static const _groupId = 'group.com.jlu.schedule';
 
-  /// JLU 节次时间表（1~12 节的开始/结束时刻）。
-  static const List<(String, String)> _sectionClock = [
-    ('08:00', '08:45'),
-    ('08:55', '09:40'),
-    ('10:00', '10:45'),
-    ('10:55', '11:40'),
-    ('13:30', '14:15'),
-    ('14:25', '15:10'),
-    ('15:20', '16:05'),
-    ('16:15', '17:00'),
-    ('18:30', '19:15'),
-    ('19:25', '20:10'),
-    ('20:20', '21:05'),
-    ('21:15', '22:00'),
-  ];
-
-  static String _sectionStart(int sec) {
-    final i = (sec - 1).clamp(0, _sectionClock.length - 1);
-    return _sectionClock[i].$1;
-  }
-
-  static String _sectionEnd(int sec) {
-    final i = (sec - 1).clamp(0, _sectionClock.length - 1);
-    return _sectionClock[i].$2;
-  }
-
   static Future<void> init() async {
     await HomeWidget.setAppGroupId(_groupId);
   }
@@ -92,8 +66,8 @@ class WidgetBridge {
             'location': c.location,
             'startSection': c.startSection,
             'endSection': c.endSection,
-            'startTime': _sectionStart(c.startSection),
-            'endTime': _sectionEnd(c.endSection),
+            'startTime': semester?.sectionStart(c.startSection) ?? '',
+            'endTime': semester?.sectionEnd(c.endSection) ?? '',
             'colorBg': _hex(CourseColors.pick(c.colorIndex).$1.toARGB32()),
             'colorAccent': _hex(CourseColors.pick(c.colorIndex).$2.toARGB32()),
           },

@@ -14,10 +14,13 @@ class SemesterSetupPage extends ConsumerStatefulWidget {
 }
 
 class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
-  final _nameCtrl = TextEditingController(text: '本学期');
-  DateTime _start = _nearestMonday(DateTime.now());
-  int _totalWeeks = 20;
-  int _sectionCount = 12;
+  late final TextEditingController _nameCtrl;
+  late DateTime _start;
+  late int _totalWeeks;
+  late int _sectionCount;
+  late List<String> _clock; // ["HH:mm-HH:mm", ...] 长度 == _sectionCount
+
+  bool _initialized = false;
 
   static DateTime _nearestMonday(DateTime d) {
     final diff = d.weekday - DateTime.monday;
@@ -28,6 +31,18 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
   void dispose() {
     _nameCtrl.dispose();
     super.dispose();
+  }
+
+  void _initFrom(Semester? existing) {
+    _nameCtrl = TextEditingController(text: existing?.name ?? '本学期');
+    _start = existing?.startDate ?? _nearestMonday(DateTime.now());
+    _totalWeeks = existing?.totalWeeks ?? 20;
+    _sectionCount = existing?.sectionCount ?? 12;
+    _clock = Semester.normalizeSectionClock(existing?.sectionClock, _sectionCount);
+  }
+
+  void _resizeClock(int count) {
+    _clock = Semester.normalizeSectionClock(_clock, count);
   }
 
   Future<void> _pickStartDate() async {
@@ -65,13 +80,73 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
     setState(() => _start = _nearestMonday(picked));
   }
 
+  Future<void> _pickTime(int sectionIndex, bool isStart) async {
+    final parts = _clock[sectionIndex].split('-');
+    final current = (isStart ? parts.first : parts.last).padLeft(5, '0');
+    final now = DateTime.now();
+    DateTime picked = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      int.tryParse(current.split(':').first) ?? 8,
+      int.tryParse(current.split(':').last) ?? 0,
+    );
+    await showCupertinoModalPopup(
+      context: context,
+      builder: (_) => Container(
+        height: 280,
+        color: CupertinoColors.systemBackground.resolveFrom(context),
+        child: Column(
+          children: [
+            SizedBox(
+              height: 40,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  CupertinoButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('完成'),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: CupertinoDatePicker(
+                mode: CupertinoDatePickerMode.time,
+                use24hFormat: true,
+                initialDateTime: picked,
+                onDateTimeChanged: (v) => picked = v,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    final label =
+        '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+    setState(() {
+      final cur = _clock[sectionIndex].split('-');
+      final start = isStart ? label : cur.first;
+      final end = isStart ? cur.last : label;
+      _clock[sectionIndex] = '$start-$end';
+    });
+  }
+
+  void _applyDefaults() {
+    setState(() {
+      _clock = Semester.normalizeSectionClock(const [], _sectionCount);
+    });
+  }
+
   Future<void> _save() async {
+    final existing = ref.read(currentSemesterProvider);
     final sem = Semester(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       name: _nameCtrl.text.trim().isEmpty ? '本学期' : _nameCtrl.text.trim(),
       startDate: _start,
       totalWeeks: _totalWeeks,
       sectionCount: _sectionCount,
+      sectionClock: _clock,
     );
     await ref.read(currentSemesterProvider.notifier).setCurrent(sem);
     if (mounted && !widget.isInitial) Navigator.of(context).pop();
@@ -79,6 +154,11 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_initialized) {
+      _initFrom(ref.read(currentSemesterProvider));
+      _initialized = true;
+    }
+
     return CupertinoPageScaffold(
       navigationBar: const CupertinoNavigationBar(middle: Text('学期设置')),
       child: SafeArea(
@@ -128,9 +208,28 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
                       12: Text('12'),
                       14: Text('14'),
                     },
-                    onValueChanged: (v) => setState(() => _sectionCount = v ?? 12),
+                    onValueChanged: (v) => setState(() {
+                      _sectionCount = v ?? 12;
+                      _resizeClock(_sectionCount);
+                    }),
                   ),
                 ),
+              ],
+            ),
+            CupertinoFormSection.insetGrouped(
+              header: Row(
+                children: [
+                  const Text('节次时间'),
+                  const Spacer(),
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: _applyDefaults,
+                    child: const Text('恢复默认', style: TextStyle(fontSize: 13)),
+                  ),
+                ],
+              ),
+              children: [
+                for (var i = 0; i < _sectionCount; i++) _clockRow(i),
               ],
             ),
             const SizedBox(height: 24),
@@ -141,8 +240,34 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
                 child: const Text('保存'),
               ),
             ),
+            const SizedBox(height: 20),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _clockRow(int i) {
+    final parts = _clock[i].split('-');
+    final start = parts.isNotEmpty ? parts.first : '';
+    final end = parts.length > 1 ? parts.last : '';
+    return CupertinoFormRow(
+      prefix: SizedBox(width: 56, child: Text('第 ${i + 1} 节')),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            onPressed: () => _pickTime(i, true),
+            child: Text(start),
+          ),
+          const Text('—', style: TextStyle(color: CupertinoColors.systemGrey)),
+          CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            onPressed: () => _pickTime(i, false),
+            child: Text(end),
+          ),
+        ],
       ),
     );
   }
