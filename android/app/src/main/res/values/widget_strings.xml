@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_small_desc">课程表 小号 (2x2)</string>
+    <string name="widget_medium_desc">课程表 中号 (4x2)</string>
+    <string name="widget_large_desc">课程表 大号 (4x4)</string>
+</resources>
