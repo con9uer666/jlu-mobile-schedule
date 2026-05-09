@@ -1,21 +1,41 @@
 import 'package:flutter/cupertino.dart';
 
 import '../data/course.dart';
+import '../data/course_override.dart';
+import '../data/semester.dart';
+import '../data/storage.dart';
 import 'course_colors.dart';
 import 'course_editor_page.dart';
+import 'reschedule_sheet.dart';
 
 /// 点课程时先弹一个下拉详情,点"编辑课程"再进入编辑页。
-Future<void> showCourseDetailSheet(BuildContext context, Course course) {
+/// 传 semester + week 时,会多出"本周临时调课 / 停课"两个按钮。
+Future<void> showCourseDetailSheet(
+  BuildContext context,
+  Course course, {
+  Semester? semester,
+  int? week,
+}) {
   return showCupertinoModalPopup<void>(
     context: context,
-    builder: (ctx) => _CourseDetailSheet(course: course),
+    builder: (ctx) => _CourseDetailSheet(
+      course: course,
+      semester: semester,
+      week: week,
+    ),
   );
 }
 
 class _CourseDetailSheet extends StatelessWidget {
-  const _CourseDetailSheet({required this.course});
+  const _CourseDetailSheet({
+    required this.course,
+    required this.semester,
+    required this.week,
+  });
 
   final Course course;
+  final Semester? semester;
+  final int? week;
 
   static const _dayNames = ['一', '二', '三', '四', '五', '六', '日'];
 
@@ -25,6 +45,10 @@ class _CourseDetailSheet extends StatelessWidget {
     final bgColor = CupertinoColors.systemBackground.resolveFrom(context);
     final labelColor = CupertinoColors.label.resolveFrom(context);
     final subLabelColor = CupertinoColors.secondaryLabel.resolveFrom(context);
+    final canAdjust = semester != null && week != null;
+    final existingOverride = canAdjust
+        ? AppStorage.overrides.get(CourseOverride.buildId(course.id, week!))
+        : null;
 
     return Container(
       decoration: BoxDecoration(
@@ -106,7 +130,51 @@ class _CourseDetailSheet extends StatelessWidget {
                   labelColor: subLabelColor,
                   valueColor: labelColor,
                 ),
+              if (existingOverride != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    existingOverride.isCancel
+                        ? '⚡ 第 ${existingOverride.week} 周本周停课'
+                        : '⚡ 第 ${existingOverride.week} 周调到 周${_dayNames[(existingOverride.newDayOfWeek - 1).clamp(0, 6)]} 第 ${existingOverride.newStartSection}-${existingOverride.newEndSection} 节',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: CupertinoColors.systemOrange,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               const SizedBox(height: 20),
+              if (canAdjust) ...[
+                CupertinoButton(
+                  color: CupertinoColors.systemGrey6,
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    showRescheduleSheet(
+                      context,
+                      course: course,
+                      semester: semester!,
+                      week: week!,
+                    );
+                  },
+                  child: Text(
+                    '本周临时调课',
+                    style: TextStyle(color: labelColor),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                CupertinoButton(
+                  color: CupertinoColors.systemGrey6,
+                  onPressed: () => _cancelThisWeek(context),
+                  child: Text(
+                    existingOverride?.isCancel == true
+                        ? '取消本周停课'
+                        : '本周停课一次',
+                    style: const TextStyle(color: CupertinoColors.systemRed),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               CupertinoButton.filled(
                 onPressed: () {
                   Navigator.of(context).pop();
@@ -128,6 +196,25 @@ class _CourseDetailSheet extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _cancelThisWeek(BuildContext context) async {
+    final id = CourseOverride.buildId(course.id, week!);
+    final existing = AppStorage.overrides.get(id);
+    if (existing?.isCancel == true) {
+      await AppStorage.overrides.delete(id);
+    } else {
+      await AppStorage.overrides.put(
+        id,
+        CourseOverride(
+          id: id,
+          courseId: course.id,
+          week: week!,
+          kind: CourseOverride.kindCancel,
+        ),
+      );
+    }
+    if (context.mounted) Navigator.of(context).pop();
   }
 
   /// 把周次列表压缩成 "1-8, 10, 12-16" 这种紧凑格式。

@@ -7,9 +7,13 @@ import '../state/schedule_providers.dart';
 import 'course_colors.dart';
 
 class CourseEditorPage extends ConsumerStatefulWidget {
-  const CourseEditorPage({super.key, this.existing});
+  const CourseEditorPage({super.key, this.existing, this.prefill});
 
   final Course? existing;
+
+  /// 主页拖选后预填:day / 起始节 / 结束节 / 当前周。
+  /// 与 existing 互斥(有 existing 时忽略)。
+  final ({int dayOfWeek, int startSection, int endSection, int week})? prefill;
 
   @override
   ConsumerState<CourseEditorPage> createState() => _CourseEditorPageState();
@@ -29,13 +33,16 @@ class _CourseEditorPageState extends ConsumerState<CourseEditorPage> {
   void initState() {
     super.initState();
     final c = widget.existing;
+    final p = widget.prefill;
     _nameCtrl = TextEditingController(text: c?.name ?? '');
     _teacherCtrl = TextEditingController(text: c?.teacher ?? '');
     _locationCtrl = TextEditingController(text: c?.location ?? '');
-    _dayOfWeek = c?.dayOfWeek ?? 1;
-    _startSection = c?.startSection ?? 1;
-    _endSection = c?.endSection ?? 2;
-    _weeks = List<int>.from(c?.weeks ?? List.generate(18, (i) => i + 1));
+    _dayOfWeek = c?.dayOfWeek ?? p?.dayOfWeek ?? 1;
+    _startSection = c?.startSection ?? p?.startSection ?? 1;
+    _endSection = c?.endSection ?? p?.endSection ?? 2;
+    _weeks = List<int>.from(
+      c?.weeks ?? (p != null ? <int>[p.week] : List.generate(18, (i) => i + 1)),
+    );
     _colorIndex = c?.colorIndex ?? 0;
   }
 

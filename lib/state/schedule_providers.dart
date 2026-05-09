@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/course.dart';
+import '../data/course_override.dart';
 import '../data/semester.dart';
 import '../data/storage.dart';
 
@@ -41,3 +42,67 @@ final coursesProvider = StreamProvider<List<Course>>((ref) async* {
     yield AppStorage.courses.values.toList();
   }
 });
+
+final overridesProvider = StreamProvider<List<CourseOverride>>((ref) async* {
+  yield AppStorage.overrides.values.toList();
+  await for (final _ in AppStorage.overrides.watch()) {
+    yield AppStorage.overrides.values.toList();
+  }
+});
+
+/// 本周实际呈现的课程块(应用完临时调课/停课后的结果)。
+class EffectiveCourse {
+  EffectiveCourse({
+    required this.course,
+    required this.dayOfWeek,
+    required this.startSection,
+    required this.endSection,
+    required this.location,
+    required this.isAdjusted,
+  });
+
+  final Course course;
+  final int dayOfWeek;
+  final int startSection;
+  final int endSection;
+  final String location;
+  final bool isAdjusted;
+}
+
+/// 合并 courses + overrides → 指定周该怎么摆。
+/// 跳过 kindCancel;kindMove 覆盖 dayOfWeek / section / location。
+List<EffectiveCourse> effectiveCoursesForWeek(
+  List<Course> courses,
+  List<CourseOverride> overrides,
+  int week,
+) {
+  final byCourse = <String, CourseOverride>{
+    for (final o in overrides.where((o) => o.week == week)) o.courseId: o,
+  };
+  final out = <EffectiveCourse>[];
+  for (final c in courses) {
+    if (!c.activeInWeek(week)) continue;
+    final o = byCourse[c.id];
+    if (o != null && o.isCancel) continue;
+    if (o != null && o.isMove) {
+      out.add(EffectiveCourse(
+        course: c,
+        dayOfWeek: o.newDayOfWeek,
+        startSection: o.newStartSection,
+        endSection: o.newEndSection,
+        location: (o.newLocation?.isNotEmpty ?? false) ? o.newLocation! : c.location,
+        isAdjusted: true,
+      ));
+    } else {
+      out.add(EffectiveCourse(
+        course: c,
+        dayOfWeek: c.dayOfWeek,
+        startSection: c.startSection,
+        endSection: c.endSection,
+        location: c.location,
+        isAdjusted: false,
+      ));
+    }
+  }
+  return out;
+}

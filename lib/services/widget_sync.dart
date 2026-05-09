@@ -20,12 +20,18 @@ class WidgetSync {
     _push();
     _ref.listen(currentSemesterProvider, (_, next) => _push());
     _ref.listen(coursesProvider, (_, next) => _push());
+    _ref.listen(overridesProvider, (_, next) => _push());
   }
 
   Future<void> _push() async {
     final sem = _ref.read(currentSemesterProvider);
     final courses = AppStorage.courses.values.toList();
-    await WidgetBridge.refresh(semester: sem, allCourses: courses);
+    final overrides = AppStorage.overrides.values.toList();
+    await WidgetBridge.refresh(
+      semester: sem,
+      allCourses: courses,
+      overrides: overrides,
+    );
   }
 }
 

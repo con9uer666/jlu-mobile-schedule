@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../data/course.dart';
+import '../data/course_override.dart';
 import '../data/semester.dart';
 import '../state/schedule_providers.dart';
 import 'course_colors.dart';
@@ -41,6 +42,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final semester = ref.watch(currentSemesterProvider);
     final coursesAsync = ref.watch(coursesProvider);
+    final overridesAsync = ref.watch(overridesProvider);
 
     if (semester == null) {
       return const SemesterSetupPage(isInitial: true);
@@ -49,6 +51,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final realWeek = semester.currentWeek(DateTime.now());
     _ensureController(semester.totalWeeks, realWeek);
     final shownWeek = _displayedWeek ?? realWeek;
+    final today = DateTime.now();
 
     return CupertinoPageScaffold(
       child: SafeArea(
@@ -59,6 +62,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               semester: semester,
               week: shownWeek,
               realWeek: realWeek,
+              today: today,
               onAdd: () => Navigator.of(context).push(
                 CupertinoPageRoute(builder: (_) => const CourseEditorPage()),
               ),
@@ -78,18 +82,25 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
             Expanded(
               child: coursesAsync.when(
-                data: (courses) => PageView.builder(
-                  controller: _pageController,
-                  itemCount: semester.totalWeeks,
-                  onPageChanged: (i) => setState(() => _displayedWeek = i + 1),
-                  itemBuilder: (_, i) => RepaintBoundary(
-                    child: _WeekGrid(
-                      courses: courses,
-                      semester: semester,
-                      week: i + 1,
+                data: (courses) {
+                  final overrides = overridesAsync.maybeWhen(
+                    data: (v) => v,
+                    orElse: () => const <CourseOverride>[],
+                  );
+                  return PageView.builder(
+                    controller: _pageController,
+                    itemCount: semester.totalWeeks,
+                    onPageChanged: (i) => setState(() => _displayedWeek = i + 1),
+                    itemBuilder: (_, i) => RepaintBoundary(
+                      child: _WeekGrid(
+                        courses: courses,
+                        overrides: overrides,
+                        semester: semester,
+                        week: i + 1,
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
                 loading: () => const Center(child: CupertinoActivityIndicator()),
                 error: (e, _) => Center(child: Text('$e')),
               ),
@@ -106,6 +117,7 @@ class _TopBar extends StatelessWidget {
     required this.semester,
     required this.week,
     required this.realWeek,
+    required this.today,
     required this.onAdd,
     required this.onImport,
     required this.onSettings,
@@ -115,17 +127,19 @@ class _TopBar extends StatelessWidget {
   final Semester semester;
   final int week;
   final int realWeek;
+  final DateTime today;
   final VoidCallback onAdd;
   final VoidCallback onImport;
   final VoidCallback onSettings;
   final VoidCallback onJumpToCurrent;
 
+  static const _dayNames = ['一', '二', '三', '四', '五', '六', '日'];
+
   @override
   Widget build(BuildContext context) {
-    final weekStart = semester.startDate.add(Duration(days: (week - 1) * 7));
-    final weekEnd = weekStart.add(const Duration(days: 6));
-    final fmt = DateFormat('M/d');
     final isCurrent = week == realWeek;
+    final dayLabel = '周${_dayNames[(today.weekday - 1).clamp(0, 6)]}';
+    final dateText = '${today.year}/${today.month}/${today.day}';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
@@ -159,6 +173,15 @@ class _TopBar extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      Text(
+                        dayLabel,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: CupertinoColors.systemRed,
+                        ),
+                      ),
                       if (!isCurrent) ...[
                         const SizedBox(width: 8),
                         Container(
@@ -185,7 +208,7 @@ class _TopBar extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${fmt.format(weekStart)} – ${fmt.format(weekEnd)} · ${semester.name}',
+                    '$dateText · ${semester.name}',
                     style: TextStyle(
                       fontSize: 12,
                       color: CupertinoColors.secondaryLabel
@@ -217,79 +240,156 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-class _WeekGrid extends StatelessWidget {
+class _WeekGrid extends StatefulWidget {
   const _WeekGrid({
     required this.courses,
+    required this.overrides,
     required this.semester,
     required this.week,
   });
 
   final List<Course> courses;
+  final List<CourseOverride> overrides;
   final Semester semester;
   final int week;
 
-  static const double _headerHeight = 36;
+  static const double _headerHeight = 40;
   static const double _timeColWidth = 34;
+  static const double _sectionHeight = 60;
+
+  @override
+  State<_WeekGrid> createState() => _WeekGridState();
+}
+
+class _WeekGridState extends State<_WeekGrid> {
+  ({int dayIdx, int startSec, int endSec})? _drag;
 
   @override
   Widget build(BuildContext context) {
-    final activeCourses = courses.where((c) => c.activeInWeek(week)).toList();
-    final weekStart = semester.startDate.add(Duration(days: (week - 1) * 7));
+    final effective = effectiveCoursesForWeek(
+      widget.courses,
+      widget.overrides,
+      widget.week,
+    );
+    final weekStart = widget.semester.startDate
+        .add(Duration(days: (widget.week - 1) * 7));
     final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
     final today = DateTime.now();
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final availableWidth = constraints.maxWidth - _timeColWidth;
+        final availableWidth = constraints.maxWidth - _WeekGrid._timeColWidth;
         final dayWidth = availableWidth / 7;
-        const sectionHeight = 60.0;
-        final gridHeight = sectionHeight * semester.sectionCount;
+        final sectionHeight = _WeekGrid._sectionHeight;
+        final gridHeight = sectionHeight * widget.semester.sectionCount;
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 40),
-          child: Column(
-            children: [
-              SizedBox(
-                height: _headerHeight,
-                child: Row(
-                  children: [
-                    const SizedBox(width: _timeColWidth),
-                    for (var i = 0; i < 7; i++)
-                      SizedBox(
-                        width: dayWidth,
-                        child: _DayHeader(
-                          date: days[i],
-                          isToday: _sameDay(days[i], today),
-                        ),
+        return Column(
+          children: [
+            // 吸顶日期行(不进滚动体)
+            SizedBox(
+              height: _WeekGrid._headerHeight,
+              child: Row(
+                children: [
+                  const SizedBox(width: _WeekGrid._timeColWidth),
+                  for (var i = 0; i < 7; i++)
+                    SizedBox(
+                      width: dayWidth,
+                      child: _DayHeader(
+                        date: days[i],
+                        isToday: _sameDay(days[i], today),
                       ),
-                  ],
-                ),
-              ),
-              SizedBox(
-                height: gridHeight,
-                child: Stack(
-                  children: [
-                    _GridBackground(
-                      sectionCount: semester.sectionCount,
-                      sectionHeight: sectionHeight,
-                      dayWidth: dayWidth,
                     ),
-                    for (final c in activeCourses)
-                      Positioned(
-                        left: _timeColWidth + dayWidth * (c.dayOfWeek - 1),
-                        top: sectionHeight * (c.startSection - 1),
-                        width: dayWidth,
-                        height: sectionHeight * (c.endSection - c.startSection + 1),
-                        child: _CourseBlock(course: c),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 40),
+                child: SizedBox(
+                  height: gridHeight,
+                  child: Stack(
+                    children: [
+                      _GridBackground(
+                        sectionCount: widget.semester.sectionCount,
+                        sectionHeight: sectionHeight,
+                        dayWidth: dayWidth,
+                        sectionClock: widget.semester.sectionClock,
                       ),
-                  ],
+                      _DragSelectionOverlay(
+                        timeColWidth: _WeekGrid._timeColWidth,
+                        dayWidth: dayWidth,
+                        sectionHeight: sectionHeight,
+                        sectionCount: widget.semester.sectionCount,
+                        drag: _drag,
+                        occupied: _buildOccupied(effective),
+                        onStart: (dayIdx, sec) =>
+                            setState(() => _drag = (dayIdx: dayIdx, startSec: sec, endSec: sec)),
+                        onUpdate: (sec) {
+                          if (_drag == null) return;
+                          final s = _drag!.startSec;
+                          final e = sec.clamp(1, widget.semester.sectionCount);
+                          setState(() =>
+                              _drag = (dayIdx: _drag!.dayIdx, startSec: s, endSec: e));
+                        },
+                        onEnd: () {
+                          final d = _drag;
+                          if (d == null) return;
+                          setState(() => _drag = null);
+                          final start = d.startSec < d.endSec ? d.startSec : d.endSec;
+                          final end = d.startSec < d.endSec ? d.endSec : d.startSec;
+                          Navigator.of(context).push(
+                            CupertinoPageRoute(
+                              builder: (_) => CourseEditorPage(
+                                prefill: (
+                                  dayOfWeek: d.dayIdx + 1,
+                                  startSection: start,
+                                  endSection: end,
+                                  week: widget.week,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        onCancel: () => setState(() => _drag = null),
+                      ),
+                      for (final ec in effective)
+                        Positioned(
+                          left: _WeekGrid._timeColWidth +
+                              dayWidth * (ec.dayOfWeek - 1),
+                          top: sectionHeight * (ec.startSection - 1),
+                          width: dayWidth,
+                          height: sectionHeight *
+                              (ec.endSection - ec.startSection + 1),
+                          child: _CourseBlock(
+                            effective: ec,
+                            onTap: () => showCourseDetailSheet(
+                              context,
+                              ec.course,
+                              semester: widget.semester,
+                              week: widget.week,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );
+  }
+
+  /// 用一张 (day, section) → bool 表做命中检测;一次拖选前算一次。
+  Set<int> _buildOccupied(List<EffectiveCourse> effective) {
+    final out = <int>{};
+    for (final ec in effective) {
+      for (var s = ec.startSection; s <= ec.endSection; s++) {
+        out.add((ec.dayOfWeek - 1) * 1000 + s);
+      }
+    }
+    return out;
   }
 
   bool _sameDay(DateTime a, DateTime b) =>
@@ -306,24 +406,54 @@ class _DayHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isToday) {
+      return Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1C1C1E),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '周${_names[date.weekday - 1]}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: CupertinoColors.white,
+                ),
+              ),
+              Text(
+                DateFormat('M/d').format(date),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: CupertinoColors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           '周${_names[date.weekday - 1]}',
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: isToday ? CupertinoColors.systemIndigo : CupertinoColors.label,
+            color: CupertinoColors.label,
           ),
         ),
         Text(
           DateFormat('M/d').format(date),
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 11,
-            color: isToday
-                ? CupertinoColors.systemIndigo
-                : CupertinoColors.secondaryLabel,
+            color: CupertinoColors.secondaryLabel,
           ),
         ),
       ],
@@ -336,11 +466,13 @@ class _GridBackground extends StatelessWidget {
     required this.sectionCount,
     required this.sectionHeight,
     required this.dayWidth,
+    required this.sectionClock,
   });
 
   final int sectionCount;
   final double sectionHeight;
   final double dayWidth;
+  final List<String> sectionClock;
 
   @override
   Widget build(BuildContext context) {
@@ -348,6 +480,8 @@ class _GridBackground extends StatelessWidget {
         CupertinoColors.separator.resolveFrom(context).withValues(alpha: 0.3);
     final sectionLabelColor =
         CupertinoColors.label.resolveFrom(context);
+    final subLabelColor =
+        CupertinoColors.secondaryLabel.resolveFrom(context);
     return CustomPaint(
       size: Size.infinite,
       painter: _GridPainter(
@@ -357,6 +491,8 @@ class _GridBackground extends StatelessWidget {
         timeColWidth: _WeekGrid._timeColWidth,
         lineColor: lineColor,
         labelColor: sectionLabelColor,
+        subLabelColor: subLabelColor,
+        sectionClock: sectionClock,
       ),
     );
   }
@@ -370,6 +506,8 @@ class _GridPainter extends CustomPainter {
     required this.timeColWidth,
     required this.lineColor,
     required this.labelColor,
+    required this.subLabelColor,
+    required this.sectionClock,
   });
 
   final int sectionCount;
@@ -378,18 +516,18 @@ class _GridPainter extends CustomPainter {
   final double timeColWidth;
   final Color lineColor;
   final Color labelColor;
+  final Color subLabelColor;
+  final List<String> sectionClock;
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = lineColor
       ..strokeWidth = 0.5;
-    // 竖线:7 列 + 左侧时间列
     for (var d = 0; d <= 7; d++) {
       final x = timeColWidth + dayWidth * d;
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
     }
-    // 横线:每节一条
     for (var i = 0; i <= sectionCount; i++) {
       final y = sectionHeight * i;
       canvas.drawLine(
@@ -398,25 +536,55 @@ class _GridPainter extends CustomPainter {
         paint,
       );
     }
-    // 节次编号
-    final textStyle = TextStyle(
-      fontSize: 13,
-      fontWeight: FontWeight.w600,
-      color: labelColor,
-    );
     for (var i = 1; i <= sectionCount; i++) {
-      final tp = TextPainter(
-        text: TextSpan(text: '$i', style: textStyle),
-        textDirection: ui.TextDirection.ltr,
-      )..layout();
-      tp.paint(
-        canvas,
-        Offset(
-          (timeColWidth - tp.width) / 2,
-          sectionHeight * (i - 1) + (sectionHeight - tp.height) / 2,
+      final numSpan = TextSpan(
+        text: '$i',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: labelColor,
         ),
       );
+      final (start, end) = _splitClock(i);
+      final numTp = TextPainter(text: numSpan, textDirection: ui.TextDirection.ltr)
+        ..layout();
+      final yTop = sectionHeight * (i - 1) + 4;
+      numTp.paint(canvas, Offset((timeColWidth - numTp.width) / 2, yTop));
+      if (start.isNotEmpty) {
+        final startTp = TextPainter(
+          text: TextSpan(
+            text: start,
+            style: TextStyle(fontSize: 9, color: subLabelColor),
+          ),
+          textDirection: ui.TextDirection.ltr,
+        )..layout();
+        startTp.paint(
+          canvas,
+          Offset((timeColWidth - startTp.width) / 2, yTop + numTp.height + 2),
+        );
+        final endTp = TextPainter(
+          text: TextSpan(
+            text: end,
+            style: TextStyle(fontSize: 9, color: subLabelColor),
+          ),
+          textDirection: ui.TextDirection.ltr,
+        )..layout();
+        endTp.paint(
+          canvas,
+          Offset(
+            (timeColWidth - endTp.width) / 2,
+            yTop + numTp.height + 2 + startTp.height,
+          ),
+        );
+      }
     }
+  }
+
+  (String, String) _splitClock(int section) {
+    if (section < 1 || section > sectionClock.length) return ('', '');
+    final parts = sectionClock[section - 1].split('-');
+    if (parts.length != 2) return ('', '');
+    return (parts[0], parts[1]);
   }
 
   @override
@@ -425,59 +593,191 @@ class _GridPainter extends CustomPainter {
       old.sectionHeight != sectionHeight ||
       old.dayWidth != dayWidth ||
       old.lineColor != lineColor ||
-      old.labelColor != labelColor;
+      old.labelColor != labelColor ||
+      old.subLabelColor != subLabelColor ||
+      !_listEq(old.sectionClock, sectionClock);
+
+  static bool _listEq(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
 }
 
-class _CourseBlock extends StatelessWidget {
-  const _CourseBlock({required this.course});
+/// 透明拖选层。命中已有课程块时不启动拖选,让事件落到 CourseBlock 的 onTap。
+class _DragSelectionOverlay extends StatelessWidget {
+  const _DragSelectionOverlay({
+    required this.timeColWidth,
+    required this.dayWidth,
+    required this.sectionHeight,
+    required this.sectionCount,
+    required this.drag,
+    required this.occupied,
+    required this.onStart,
+    required this.onUpdate,
+    required this.onEnd,
+    required this.onCancel,
+  });
 
-  final Course course;
+  final double timeColWidth;
+  final double dayWidth;
+  final double sectionHeight;
+  final int sectionCount;
+  final ({int dayIdx, int startSec, int endSec})? drag;
+  final Set<int> occupied;
+  final void Function(int dayIdx, int sec) onStart;
+  final void Function(int sec) onUpdate;
+  final VoidCallback onEnd;
+  final VoidCallback onCancel;
+
+  (int dayIdx, int sec)? _hit(Offset local) {
+    final dx = local.dx - timeColWidth;
+    if (dx < 0) return null;
+    final dayIdx = (dx / dayWidth).floor();
+    if (dayIdx < 0 || dayIdx > 6) return null;
+    final sec = (local.dy / sectionHeight).floor() + 1;
+    if (sec < 1 || sec > sectionCount) return null;
+    return (dayIdx, sec);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final (bg, accent) = CourseColors.pick(course.colorIndex);
+    return Positioned.fill(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTapDown: (d) {
+          final hit = _hit(d.localPosition);
+          if (hit == null) return;
+          final key = hit.$1 * 1000 + hit.$2;
+          if (occupied.contains(key)) return;
+          // 单点:同 start/end,松手时触发
+          onStart(hit.$1, hit.$2);
+        },
+        onTapUp: (_) {
+          if (drag != null) onEnd();
+        },
+        onTapCancel: onCancel,
+        onPanStart: (d) {
+          final hit = _hit(d.localPosition);
+          if (hit == null) return;
+          final key = hit.$1 * 1000 + hit.$2;
+          if (occupied.contains(key)) {
+            onCancel();
+            return;
+          }
+          onStart(hit.$1, hit.$2);
+        },
+        onPanUpdate: (d) {
+          final sec = (d.localPosition.dy / sectionHeight).floor() + 1;
+          onUpdate(sec);
+        },
+        onPanEnd: (_) {
+          if (drag != null) onEnd();
+        },
+        onPanCancel: onCancel,
+        child: drag == null
+            ? const SizedBox.shrink()
+            : Stack(
+                children: [
+                  Positioned(
+                    left: timeColWidth + dayWidth * drag!.dayIdx + 2,
+                    top: sectionHeight *
+                            ((drag!.startSec < drag!.endSec
+                                    ? drag!.startSec
+                                    : drag!.endSec) -
+                                1) +
+                        2,
+                    width: dayWidth - 4,
+                    height: sectionHeight *
+                            ((drag!.startSec - drag!.endSec).abs() + 1) -
+                        4,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.systemIndigo.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: CupertinoColors.systemIndigo,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _CourseBlock extends StatelessWidget {
+  const _CourseBlock({required this.effective, required this.onTap});
+
+  final EffectiveCourse effective;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final (_, accent) = CourseColors.pick(effective.course.colorIndex);
     return Padding(
       padding: const EdgeInsets.all(2),
       child: GestureDetector(
-        onTap: () => showCourseDetailSheet(context, course),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(8),
-            border: Border(
-              left: BorderSide(color: accent, width: 3),
+        onTap: onTap,
+        child: Stack(
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: accent,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(6, 6, 4, 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      effective.course.name,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: CupertinoColors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
+                    ),
+                    if (effective.location.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        effective.location,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: CupertinoColors.white.withValues(alpha: 0.85),
+                          fontSize: 10,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(5, 5, 4, 4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  course.name,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: accent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    height: 1.15,
+            if (effective.isAdjusted)
+              Positioned(
+                right: 4,
+                top: 4,
+                child: Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: CupertinoColors.white,
+                    shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  course.location,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: accent.withValues(alpha: 0.75),
-                    fontSize: 10,
-                    height: 1.15,
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+          ],
         ),
       ),
     );
