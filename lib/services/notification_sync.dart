@@ -32,6 +32,9 @@ class NotificationSync {
     AppStorage.courseReminders.watch().listen((_) {
       _rescheduler.requestReschedule();
     });
+    AppStorage.daySwaps.watch().listen((_) {
+      _rescheduler.requestReschedule();
+    });
   }
 
   Future<void> _run() async {
