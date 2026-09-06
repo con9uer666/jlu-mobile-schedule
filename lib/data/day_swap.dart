@@ -8,7 +8,7 @@ class DaySwap extends HiveObject {
   @HiveField(1)
   DateTime targetDate;
   @HiveField(2)
-  int sourceWeekday;
+  DateTime sourceDate;
 
-  DaySwap({required this.id, required this.targetDate, required this.sourceWeekday});
+  DaySwap({required this.id, required this.targetDate, required this.sourceDate});
 }

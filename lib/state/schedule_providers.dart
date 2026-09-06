@@ -121,10 +121,15 @@ List<EffectiveCourse> effectiveCoursesForWeek(
   for (final s in AppStorage.daySwaps.values) {
     final d = DateTime(s.targetDate.year, s.targetDate.month, s.targetDate.day);
     final idx = d.difference(DateTime(weekStart.year, weekStart.month, weekStart.day)).inDays;
-    if (idx >= 0 && idx < 7) swaps[idx + 1] = s.sourceWeekday;
+    if (idx >= 0 && idx < 7) swaps[idx + 1] = s.sourceDate.weekday;
   }
   if (swaps.isEmpty) return out;
-  return out.where((e) => !swaps.containsKey(e.dayOfWeek)).map((e) {
+  // 覆盖语义：目标日隐藏原课程，来源日只复制固定课程，忽略来源日临时调整。
+  final fixed = <EffectiveCourse>[
+    for (final c in courses)
+      if (c.activeInWeek(week)) EffectiveCourse(course: c, dayOfWeek: c.dayOfWeek, startSection: c.startSection, endSection: c.endSection, location: c.location, isAdjusted: false),
+  ];
+  return fixed.where((e) => !swaps.containsKey(e.dayOfWeek)).map((e) {
     final target = swaps.entries.firstWhere((x) => x.value == e.dayOfWeek, orElse: () => const MapEntry(0, 0)).key;
     return target == 0 ? e : EffectiveCourse(course: e.course, dayOfWeek: target, startSection: e.startSection, endSection: e.endSection, location: e.location, isAdjusted: true);
   }).toList();
