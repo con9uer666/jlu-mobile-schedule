@@ -2,6 +2,8 @@ import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'course.dart';
+import 'day_swap.dart';
+import 'day_swap.g.dart';
 import 'course.g.dart';
 import 'course_override.dart';
 import 'course_override.g.dart';
@@ -19,6 +21,7 @@ class AppStorage {
   static const overridesBox = 'overrides';
   static const eventsBox = 'events';
   static const courseRemindersBox = 'course_reminders';
+  static const daySwapsBox = 'day_swaps';
 
   static late Box<Course> courses;
   static late Box<Semester> semesters;
@@ -26,9 +29,11 @@ class AppStorage {
   static late Box<CourseOverride> overrides;
   static late Box<EventItem> events;
   static late Box<CourseReminderSetting> courseReminders;
+  static late Box<DaySwap> daySwaps;
 
   static Future<void> openAll() async {
     Hive.registerAdapter(CourseAdapter());
+    Hive.registerAdapter(DaySwapAdapter());
     Hive.registerAdapter(SemesterAdapter());
     Hive.registerAdapter(CourseOverrideAdapter());
     Hive.registerAdapter(EventItemAdapter());
@@ -45,5 +50,6 @@ class AppStorage {
     events = await Hive.openBox<EventItem>(eventsBox);
     courseReminders =
         await Hive.openBox<CourseReminderSetting>(courseRemindersBox);
+    daySwaps = await Hive.openBox<DaySwap>(daySwapsBox);
   }
 }
