@@ -86,6 +86,7 @@ List<EffectiveCourse> effectiveCoursesForWeek(
   List<Course> courses,
   List<CourseOverride> overrides,
   int week,
+  {DateTime? weekStart}
 ) {
   final byCourse = <String, CourseOverride>{
     for (final o in overrides.where((o) => o.week == week)) o.courseId: o,
@@ -115,5 +116,16 @@ List<EffectiveCourse> effectiveCoursesForWeek(
       ));
     }
   }
-  return out;
+  if (weekStart == null || AppStorage.daySwaps.isEmpty) return out;
+  final swaps = <int, int>{};
+  for (final s in AppStorage.daySwaps.values) {
+    final d = DateTime(s.targetDate.year, s.targetDate.month, s.targetDate.day);
+    final idx = d.difference(DateTime(weekStart.year, weekStart.month, weekStart.day)).inDays;
+    if (idx >= 0 && idx < 7) swaps[idx + 1] = s.sourceWeekday;
+  }
+  if (swaps.isEmpty) return out;
+  return out.where((e) => !swaps.containsKey(e.dayOfWeek)).map((e) {
+    final target = swaps.entries.firstWhere((x) => x.value == e.dayOfWeek, orElse: () => const MapEntry(0, 0)).key;
+    return target == 0 ? e : EffectiveCourse(course: e.course, dayOfWeek: target, startSection: e.startSection, endSection: e.endSection, location: e.location, isAdjusted: true);
+  }).toList();
 }

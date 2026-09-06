@@ -353,6 +353,7 @@ class _WeekGridState extends State<_WeekGrid> {
       widget.courses,
       widget.overrides,
       widget.week,
+      weekStart: widget.semester.startDate.add(Duration(days: (widget.week - 1) * 7)),
     );
     final weekStart = widget.semester.startDate
         .add(Duration(days: (widget.week - 1) * 7));

@@ -7,6 +7,7 @@ import '../data/storage.dart';
 import '../state/schedule_providers.dart';
 import 'import_page.dart';
 import 'semester_setup_page.dart';
+import 'day_swap_page.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -49,6 +50,7 @@ class SettingsPage extends ConsumerWidget {
                       CupertinoPageRoute(builder: (_) => const ImportPage()),
                     ),
                   ),
+                  CupertinoListTile(title: const Text('整天调课'), trailing: const CupertinoListTileChevron(), onTap: () => Navigator.of(context).push(CupertinoPageRoute(builder: (_) => const DaySwapPage()))),
                 ],
               ),
               CupertinoListSection.insetGrouped(
