@@ -49,9 +49,9 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
     DateTime picked = _start;
     await showCupertinoModalPopup(
       context: context,
-      builder: (_) => Container(
+      builder: (ctx) => Container(
         height: 280,
-        color: CupertinoColors.systemBackground.resolveFrom(context),
+        color: CupertinoColors.systemBackground.resolveFrom(ctx),
         child: Column(
           children: [
             SizedBox(
@@ -60,7 +60,7 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   CupertinoButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () => Navigator.of(ctx).pop(),
                     child: const Text('完成'),
                   ),
                 ],
@@ -77,6 +77,7 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
         ),
       ),
     );
+    if (!mounted) return;
     setState(() => _start = _nearestMonday(picked));
   }
 
@@ -93,9 +94,9 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
     );
     await showCupertinoModalPopup(
       context: context,
-      builder: (_) => Container(
+      builder: (ctx) => Container(
         height: 280,
-        color: CupertinoColors.systemBackground.resolveFrom(context),
+        color: CupertinoColors.systemBackground.resolveFrom(ctx),
         child: Column(
           children: [
             SizedBox(
@@ -104,7 +105,7 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   CupertinoButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () => Navigator.of(ctx).pop(),
                     child: const Text('完成'),
                   ),
                 ],
@@ -122,6 +123,7 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
         ),
       ),
     );
+    if (!mounted) return;
     final label =
         '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
     setState(() {
@@ -139,6 +141,7 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
   }
 
   Future<void> _save() async {
+    if (_totalWeeks < 1 || _sectionCount < 1) return;
     final existing = ref.read(currentSemesterProvider);
     final sem = Semester(
       id: existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
@@ -160,10 +163,19 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
     }
 
     return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(middle: Text('学期设置')),
-      child: SafeArea(
-        child: ListView(
-          children: [
+      backgroundColor:
+          CupertinoColors.systemGroupedBackground.resolveFrom(context),
+      child: CustomScrollView(
+        slivers: [
+          CupertinoSliverNavigationBar(
+            largeTitle: const Text('学期设置'),
+            backgroundColor: CupertinoColors.systemBackground
+                .resolveFrom(context)
+                .withValues(alpha: 0.7),
+            border: null,
+          ),
+          SliverList(
+            delegate: SliverChildListDelegate([
             CupertinoFormSection.insetGrouped(
               header: const Text('基础信息'),
               children: [
@@ -241,8 +253,9 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
               ),
             ),
             const SizedBox(height: 20),
-          ],
-        ),
+            ]),
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,4 @@
-import 'dart:ui' as ui;
+import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -8,12 +8,15 @@ import 'package:intl/intl.dart';
 import '../data/course.dart';
 import '../data/course_override.dart';
 import '../data/semester.dart';
+import '../services/section_time.dart';
 import '../state/schedule_providers.dart';
 import 'course_colors.dart';
 import 'course_detail_sheet.dart';
 import 'course_editor_page.dart';
 import 'import_page.dart';
 import 'semester_setup_page.dart';
+import 'settings_page.dart';
+import 'widgets/glass_pill.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -25,9 +28,20 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> {
   PageController? _pageController;
   int? _displayedWeek;
+  bool _pushedInitialSetup = false;
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void dispose() {
+    _tick?.cancel();
     _pageController?.dispose();
     super.dispose();
   }
@@ -46,42 +60,37 @@ class _HomePageState extends ConsumerState<HomePage> {
     final overridesAsync = ref.watch(overridesProvider);
 
     if (semester == null) {
-      return const SemesterSetupPage(isInitial: true);
+      if (!_pushedInitialSetup) {
+        _pushedInitialSetup = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          Navigator.of(context).push(
+            CupertinoPageRoute(
+              builder: (_) => const SemesterSetupPage(isInitial: true),
+            ),
+          );
+        });
+      }
+      return const CupertinoPageScaffold(
+        child: Center(child: CupertinoActivityIndicator()),
+      );
     }
+    _pushedInitialSetup = false;
 
     final realWeek = semester.currentWeek(DateTime.now());
-    _ensureController(semester.totalWeeks, realWeek);
+    _ensureController(semester.totalWeeks, realWeek.clamp(1, semester.totalWeeks));
     final shownWeek = _displayedWeek ?? realWeek;
     final today = DateTime.now();
 
     return CupertinoPageScaffold(
+      backgroundColor:
+          CupertinoColors.systemBackground.resolveFrom(context),
       child: SafeArea(
         bottom: false,
-        child: Column(
+        child: Stack(
           children: [
-            _TopBar(
-              semester: semester,
-              week: shownWeek,
-              realWeek: realWeek,
-              today: today,
-              onAdd: () => Navigator.of(context).push(
-                CupertinoPageRoute(builder: (_) => const CourseEditorPage()),
-              ),
-              onImport: () => Navigator.of(context).push(
-                CupertinoPageRoute(builder: (_) => const ImportPage()),
-              ),
-              onSettings: () => Navigator.of(context).push(
-                CupertinoPageRoute(builder: (_) => const SemesterSetupPage()),
-              ),
-              onJumpToCurrent: () {
-                _pageController?.animateToPage(
-                  realWeek - 1,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOutCubic,
-                );
-              },
-            ),
-            Expanded(
+            Padding(
+              padding: const EdgeInsets.only(top: 72),
               child: coursesAsync.when(
                 data: (courses) {
                   final overrides = overridesAsync.maybeWhen(
@@ -98,12 +107,43 @@ class _HomePageState extends ConsumerState<HomePage> {
                         overrides: overrides,
                         semester: semester,
                         week: i + 1,
+                        isCurrentWeek: (i + 1) == realWeek,
                       ),
                     ),
                   );
                 },
                 loading: () => const Center(child: CupertinoActivityIndicator()),
                 error: (e, _) => Center(child: Text('$e')),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              left: 0,
+              right: 0,
+              child: _TopBar(
+                semester: semester,
+                week: shownWeek,
+                realWeek: realWeek,
+                today: today,
+                status: shownWeek == realWeek
+                    ? currentStatus(semester, today)
+                    : null,
+                onAdd: () => Navigator.of(context).push(
+                  CupertinoPageRoute(builder: (_) => const CourseEditorPage()),
+                ),
+                onImport: () => Navigator.of(context).push(
+                  CupertinoPageRoute(builder: (_) => const ImportPage()),
+                ),
+                onSettings: () => Navigator.of(context).push(
+                  CupertinoPageRoute(builder: (_) => const SettingsPage()),
+                ),
+                onJumpToCurrent: () {
+                  _pageController?.animateToPage(
+                    realWeek - 1,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                  );
+                },
               ),
             ),
           ],
@@ -119,6 +159,7 @@ class _TopBar extends StatelessWidget {
     required this.week,
     required this.realWeek,
     required this.today,
+    required this.status,
     required this.onAdd,
     required this.onImport,
     required this.onSettings,
@@ -129,6 +170,7 @@ class _TopBar extends StatelessWidget {
   final int week;
   final int realWeek;
   final DateTime today;
+  final SectionStatus? status;
   final VoidCallback onAdd;
   final VoidCallback onImport;
   final VoidCallback onSettings;
@@ -136,106 +178,145 @@ class _TopBar extends StatelessWidget {
 
   static const _dayNames = ['一', '二', '三', '四', '五', '六', '日'];
 
+  String _subtitle() {
+    if (status == null) {
+      return '${today.month}/${today.day} · ${semester.name}';
+    }
+    final s = status!;
+    if (s.inClass) {
+      final m = s.toEnd!.inMinutes;
+      return '第 ${s.section} 节进行中 · 距下课 $m 分钟';
+    }
+    if (s.inBreak) {
+      final m = s.toNext!.inMinutes;
+      if (m < 60) return '距下节课 $m 分钟';
+      final h = m ~/ 60;
+      final r = m % 60;
+      return '距下节课 ${h}h${r}m';
+    }
+    return '今日无课';
+  }
+
   @override
   Widget build(BuildContext context) {
     final isCurrent = week == realWeek;
     final dayLabel = '周${_dayNames[(today.weekday - 1).clamp(0, 6)]}';
-    final dateText = '${today.year}/${today.month}/${today.day}';
+    final accent = CupertinoTheme.of(context).primaryColor;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-      decoration: BoxDecoration(
-        color: CupertinoColors.systemBackground.resolveFrom(context),
-        border: Border(
-          bottom: BorderSide(
-            color: CupertinoColors.separator
-                .resolveFrom(context)
-                .withValues(alpha: 0.5),
-            width: 0.5,
-          ),
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         children: [
           Expanded(
-            child: GestureDetector(
-              onTap: isCurrent ? null : onJumpToCurrent,
-              behavior: HitTestBehavior.opaque,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
+            child: GlassPill(
+              radius: 22,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: isCurrent ? null : onJumpToCurrent,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        '第 $week 周',
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        dayLabel,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: CupertinoColors.systemRed,
-                        ),
-                      ),
-                      if (!isCurrent) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: CupertinoColors.systemIndigo
-                                .withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            '回到本周',
+                      Row(
+                        children: [
+                          Text(
+                            week == 0 ? '未开学' : '第 $week 周',
                             style: TextStyle(
-                              fontSize: 10,
-                              color: CupertinoColors.systemIndigo,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: CupertinoColors.label.resolveFrom(context),
                             ),
                           ),
+                          const SizedBox(width: 6),
+                          Text(
+                            dayLabel,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  CupertinoColors.label.resolveFrom(context),
+                            ),
+                          ),
+                          if (!isCurrent) ...[
+                            const SizedBox(width: 6),
+                            Icon(
+                              CupertinoIcons.arrow_uturn_left_circle_fill,
+                              size: 16,
+                              color: CupertinoDynamicColor.resolve(
+                                  accent, context),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        _subtitle(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: CupertinoColors.secondaryLabel
+                              .resolveFrom(context),
                         ),
-                      ],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '$dateText · ${semester.name}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: CupertinoColors.secondaryLabel
-                          .resolveFrom(context),
-                    ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GlassPill(
+            radius: 22,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _PillIconButton(
+                    icon: CupertinoIcons.cloud_download,
+                    onTap: onImport,
+                  ),
+                  _PillIconButton(
+                    icon: CupertinoIcons.add_circled,
+                    onTap: onAdd,
+                  ),
+                  _PillIconButton(
+                    icon: CupertinoIcons.slider_horizontal_3,
+                    onTap: onSettings,
                   ),
                 ],
               ),
             ),
           ),
-          CupertinoButton(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            onPressed: onImport,
-            child: const Icon(CupertinoIcons.cloud_download),
-          ),
-          CupertinoButton(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            onPressed: onAdd,
-            child: const Icon(CupertinoIcons.add_circled),
-          ),
-          CupertinoButton(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            onPressed: onSettings,
-            child: const Icon(CupertinoIcons.slider_horizontal_3),
-          ),
         ],
+      ),
+    );
+  }
+}
+
+class _PillIconButton extends StatelessWidget {
+  const _PillIconButton({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Icon(
+          icon,
+          size: 20,
+          color: CupertinoColors.label.resolveFrom(context),
+        ),
       ),
     );
   }
@@ -247,16 +328,17 @@ class _WeekGrid extends StatefulWidget {
     required this.overrides,
     required this.semester,
     required this.week,
+    required this.isCurrentWeek,
   });
 
   final List<Course> courses;
   final List<CourseOverride> overrides;
   final Semester semester;
   final int week;
+  final bool isCurrentWeek;
 
   static const double _headerHeight = 40;
-  static const double _timeColWidth = 34;
-  static const double _sectionHeight = 60;
+  static const double _timeColWidth = 44;
 
   @override
   State<_WeekGrid> createState() => _WeekGridState();
@@ -281,8 +363,19 @@ class _WeekGridState extends State<_WeekGrid> {
       builder: (context, constraints) {
         final availableWidth = constraints.maxWidth - _WeekGrid._timeColWidth;
         final dayWidth = availableWidth / 7;
-        final sectionHeight = _WeekGrid._sectionHeight;
+        // 网格可用高度:总高 - 顶部日期行 - 底部浮动 Tab Bar 留白。
+        const reservedBottom = 96.0;
+        final available =
+            constraints.maxHeight - _WeekGrid._headerHeight - reservedBottom;
+        final autoHeight = available / widget.semester.sectionCount;
+        final sectionHeight = autoHeight.clamp(36.0, 60.0);
         final gridHeight = sectionHeight * widget.semester.sectionCount;
+        final currentSection = widget.isCurrentWeek
+            ? currentStatus(widget.semester, DateTime.now()).section
+            : null;
+        final accent = CupertinoTheme.of(context).primaryColor;
+        final accentResolved =
+            CupertinoDynamicColor.resolve(accent, context);
 
         return Column(
           children: [
@@ -305,86 +398,124 @@ class _WeekGridState extends State<_WeekGrid> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 40),
+                padding: EdgeInsets.zero,
+                physics: gridHeight <= available
+                    ? const NeverScrollableScrollPhysics()
+                    : const BouncingScrollPhysics(),
                 child: SizedBox(
                   height: gridHeight,
-                  child: Stack(
+                  child: Row(
                     children: [
-                      _GridBackground(
+                      _TimeColumn(
+                        width: _WeekGrid._timeColWidth,
                         sectionCount: widget.semester.sectionCount,
                         sectionHeight: sectionHeight,
-                        dayWidth: dayWidth,
                         sectionClock: widget.semester.sectionClock,
+                        currentSection: currentSection,
                       ),
-                      _DragSelectionOverlay(
-                        timeColWidth: _WeekGrid._timeColWidth,
-                        dayWidth: dayWidth,
-                        sectionHeight: sectionHeight,
-                        sectionCount: widget.semester.sectionCount,
-                        drag: _drag,
-                        occupied: _buildOccupied(effective),
-                        onTapEmpty: (dayIdx, sec) {
-                          Navigator.of(context).push(
-                            CupertinoPageRoute(
-                              builder: (_) => CourseEditorPage(
-                                prefill: (
-                                  dayOfWeek: dayIdx + 1,
-                                  startSection: sec,
-                                  endSection: sec,
-                                  week: widget.week,
-                                ),
+                      Expanded(
+                        child: Stack(
+                          children: [
+                            // 今日整列染色(只在本周生效)
+                            Positioned.fill(
+                              child: Row(
+                                children: [
+                                  for (int i = 0; i < 7; i++)
+                                    Expanded(
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                            milliseconds: 250),
+                                        color: (widget.isCurrentWeek &&
+                                                _sameDay(days[i], today))
+                                            ? accentResolved
+                                                .withValues(alpha: 0.14)
+                                            : const Color(0x00000000),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
-                          );
-                        },
-                        onStart: (dayIdx, sec) =>
-                            setState(() => _drag = (dayIdx: dayIdx, startSec: sec, endSec: sec)),
-                        onUpdate: (sec) {
-                          if (_drag == null) return;
-                          final s = _drag!.startSec;
-                          final e = sec.clamp(1, widget.semester.sectionCount);
-                          setState(() =>
-                              _drag = (dayIdx: _drag!.dayIdx, startSec: s, endSec: e));
-                        },
-                        onEnd: () {
-                          final d = _drag;
-                          if (d == null) return;
-                          setState(() => _drag = null);
-                          final start = d.startSec < d.endSec ? d.startSec : d.endSec;
-                          final end = d.startSec < d.endSec ? d.endSec : d.startSec;
-                          Navigator.of(context).push(
-                            CupertinoPageRoute(
-                              builder: (_) => CourseEditorPage(
-                                prefill: (
-                                  dayOfWeek: d.dayIdx + 1,
-                                  startSection: start,
-                                  endSection: end,
-                                  week: widget.week,
+                            _GridBackground(
+                              sectionCount: widget.semester.sectionCount,
+                              sectionHeight: sectionHeight,
+                              dayWidth: dayWidth,
+                              highlightSection: currentSection,
+                            ),
+                            _DragSelectionOverlay(
+                              dayWidth: dayWidth,
+                              sectionHeight: sectionHeight,
+                              sectionCount: widget.semester.sectionCount,
+                              drag: _drag,
+                              occupied: _buildOccupied(effective),
+                              onTapEmpty: (dayIdx, sec) {
+                                Navigator.of(context).push(
+                                  CupertinoPageRoute(
+                                    builder: (_) => CourseEditorPage(
+                                      prefill: (
+                                        dayOfWeek: dayIdx + 1,
+                                        startSection: sec,
+                                        endSection: sec,
+                                        week: widget.week,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                              onStart: (dayIdx, sec) => setState(() => _drag =
+                                  (dayIdx: dayIdx, startSec: sec, endSec: sec)),
+                              onUpdate: (sec) {
+                                if (_drag == null) return;
+                                final s = _drag!.startSec;
+                                final e = sec.clamp(
+                                    1, widget.semester.sectionCount);
+                                setState(() => _drag =
+                                    (dayIdx: _drag!.dayIdx, startSec: s, endSec: e));
+                              },
+                              onEnd: () {
+                                final d = _drag;
+                                if (d == null) return;
+                                setState(() => _drag = null);
+                                final start = d.startSec < d.endSec
+                                    ? d.startSec
+                                    : d.endSec;
+                                final end = d.startSec < d.endSec
+                                    ? d.endSec
+                                    : d.startSec;
+                                Navigator.of(context).push(
+                                  CupertinoPageRoute(
+                                    builder: (_) => CourseEditorPage(
+                                      prefill: (
+                                        dayOfWeek: d.dayIdx + 1,
+                                        startSection: start,
+                                        endSection: end,
+                                        week: widget.week,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                              onCancel: () => setState(() => _drag = null),
+                            ),
+                            for (final ec in effective)
+                              Positioned(
+                                left: dayWidth * (ec.dayOfWeek - 1),
+                                top: sectionHeight * (ec.startSection - 1),
+                                width: dayWidth,
+                                height: sectionHeight *
+                                    (ec.endSection - ec.startSection + 1),
+                                child: _CourseBlock(
+                                  effective: ec,
+                                  onTap: () => showCourseDetailSheet(
+                                    context,
+                                    ec.course,
+                                    semester: widget.semester,
+                                    week: widget.week,
+                                  ),
                                 ),
                               ),
-                            ),
-                          );
-                        },
-                        onCancel: () => setState(() => _drag = null),
-                      ),
-                      for (final ec in effective)
-                        Positioned(
-                          left: _WeekGrid._timeColWidth +
-                              dayWidth * (ec.dayOfWeek - 1),
-                          top: sectionHeight * (ec.startSection - 1),
-                          width: dayWidth,
-                          height: sectionHeight *
-                              (ec.endSection - ec.startSection + 1),
-                          child: _CourseBlock(
-                            effective: ec,
-                            onTap: () => showCourseDetailSheet(
-                              context,
-                              ec.course,
-                              semester: widget.semester,
-                              week: widget.week,
-                            ),
-                          ),
+                          ],
                         ),
+                      ),
                     ],
                   ),
                 ),
@@ -426,7 +557,7 @@ class _DayHeader extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: const Color(0xFF1C1C1E),
+            color: CupertinoTheme.of(context).primaryColor,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Column(
@@ -458,17 +589,17 @@ class _DayHeader extends StatelessWidget {
       children: [
         Text(
           '周${_names[date.weekday - 1]}',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: CupertinoColors.label,
+            color: CupertinoColors.label.resolveFrom(context),
           ),
         ),
         Text(
           DateFormat('M/d').format(date),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
-            color: CupertinoColors.secondaryLabel,
+            color: CupertinoColors.secondaryLabel.resolveFrom(context),
           ),
         ),
       ],
@@ -481,33 +612,30 @@ class _GridBackground extends StatelessWidget {
     required this.sectionCount,
     required this.sectionHeight,
     required this.dayWidth,
-    required this.sectionClock,
+    required this.highlightSection,
   });
 
   final int sectionCount;
   final double sectionHeight;
   final double dayWidth;
-  final List<String> sectionClock;
+  final int? highlightSection;
 
   @override
   Widget build(BuildContext context) {
     final lineColor =
         CupertinoColors.separator.resolveFrom(context).withValues(alpha: 0.3);
-    final sectionLabelColor =
-        CupertinoColors.label.resolveFrom(context);
-    final subLabelColor =
-        CupertinoColors.secondaryLabel.resolveFrom(context);
+    final highlightColor = CupertinoTheme.of(context)
+        .primaryColor
+        .withValues(alpha: 0.10);
     return CustomPaint(
       size: Size.infinite,
       painter: _GridPainter(
         sectionCount: sectionCount,
         sectionHeight: sectionHeight,
         dayWidth: dayWidth,
-        timeColWidth: _WeekGrid._timeColWidth,
         lineColor: lineColor,
-        labelColor: sectionLabelColor,
-        subLabelColor: subLabelColor,
-        sectionClock: sectionClock,
+        highlightSection: highlightSection,
+        highlightColor: highlightColor,
       ),
     );
   }
@@ -518,88 +646,41 @@ class _GridPainter extends CustomPainter {
     required this.sectionCount,
     required this.sectionHeight,
     required this.dayWidth,
-    required this.timeColWidth,
     required this.lineColor,
-    required this.labelColor,
-    required this.subLabelColor,
-    required this.sectionClock,
+    required this.highlightSection,
+    required this.highlightColor,
   });
 
   final int sectionCount;
   final double sectionHeight;
   final double dayWidth;
-  final double timeColWidth;
   final Color lineColor;
-  final Color labelColor;
-  final Color subLabelColor;
-  final List<String> sectionClock;
+  final int? highlightSection;
+  final Color highlightColor;
 
   @override
   void paint(Canvas canvas, Size size) {
+    // 当前节高亮带
+    if (highlightSection != null &&
+        highlightSection! >= 1 &&
+        highlightSection! <= sectionCount) {
+      final yTop = sectionHeight * (highlightSection! - 1);
+      final rect = Rect.fromLTWH(0, yTop, size.width, sectionHeight);
+      canvas.drawRect(rect, Paint()..color = highlightColor);
+    }
     final paint = Paint()
       ..color = lineColor
       ..strokeWidth = 0.5;
+    // 竖线(8 条,把 7 列分隔开)
     for (var d = 0; d <= 7; d++) {
-      final x = timeColWidth + dayWidth * d;
+      final x = dayWidth * d;
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
     }
+    // 横线(sectionCount + 1 条)
     for (var i = 0; i <= sectionCount; i++) {
       final y = sectionHeight * i;
-      canvas.drawLine(
-        Offset(timeColWidth, y),
-        Offset(size.width, y),
-        paint,
-      );
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }
-    for (var i = 1; i <= sectionCount; i++) {
-      final numSpan = TextSpan(
-        text: '$i',
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: labelColor,
-        ),
-      );
-      final (start, end) = _splitClock(i);
-      final numTp = TextPainter(text: numSpan, textDirection: ui.TextDirection.ltr)
-        ..layout();
-      final yTop = sectionHeight * (i - 1) + 4;
-      numTp.paint(canvas, Offset((timeColWidth - numTp.width) / 2, yTop));
-      if (start.isNotEmpty) {
-        final startTp = TextPainter(
-          text: TextSpan(
-            text: start,
-            style: TextStyle(fontSize: 9, color: subLabelColor),
-          ),
-          textDirection: ui.TextDirection.ltr,
-        )..layout();
-        startTp.paint(
-          canvas,
-          Offset((timeColWidth - startTp.width) / 2, yTop + numTp.height + 2),
-        );
-        final endTp = TextPainter(
-          text: TextSpan(
-            text: end,
-            style: TextStyle(fontSize: 9, color: subLabelColor),
-          ),
-          textDirection: ui.TextDirection.ltr,
-        )..layout();
-        endTp.paint(
-          canvas,
-          Offset(
-            (timeColWidth - endTp.width) / 2,
-            yTop + numTp.height + 2 + startTp.height,
-          ),
-        );
-      }
-    }
-  }
-
-  (String, String) _splitClock(int section) {
-    if (section < 1 || section > sectionClock.length) return ('', '');
-    final parts = sectionClock[section - 1].split('-');
-    if (parts.length != 2) return ('', '');
-    return (parts[0], parts[1]);
   }
 
   @override
@@ -608,16 +689,110 @@ class _GridPainter extends CustomPainter {
       old.sectionHeight != sectionHeight ||
       old.dayWidth != dayWidth ||
       old.lineColor != lineColor ||
-      old.labelColor != labelColor ||
-      old.subLabelColor != subLabelColor ||
-      !_listEq(old.sectionClock, sectionClock);
+      old.highlightSection != highlightSection ||
+      old.highlightColor != highlightColor;
+}
 
-  static bool _listEq(List<String> a, List<String> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
+class _TimeColumn extends StatelessWidget {
+  const _TimeColumn({
+    required this.width,
+    required this.sectionCount,
+    required this.sectionHeight,
+    required this.sectionClock,
+    required this.currentSection,
+  });
+
+  final double width;
+  final int sectionCount;
+  final double sectionHeight;
+  final List<String> sectionClock;
+  final int? currentSection;
+
+  (String, String) _split(int i) {
+    if (i < 1 || i > sectionClock.length) return ('', '');
+    final parts = sectionClock[i - 1].split('-');
+    if (parts.length != 2) return ('', '');
+    return (parts[0], parts[1]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: Column(
+        children: [
+          for (int i = 1; i <= sectionCount; i++)
+            _SectionTimeCell(
+              section: i,
+              start: _split(i).$1,
+              end: _split(i).$2,
+              isCurrent: currentSection == i,
+              height: sectionHeight,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionTimeCell extends StatelessWidget {
+  const _SectionTimeCell({
+    required this.section,
+    required this.start,
+    required this.end,
+    required this.isCurrent,
+    required this.height,
+  });
+
+  final int section;
+  final String start;
+  final String end;
+  final bool isCurrent;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = CupertinoTheme.of(context).primaryColor;
+    final accentResolved = CupertinoDynamicColor.resolve(accent, context);
+    final subColor = CupertinoColors.secondaryLabel.resolveFrom(context);
+    final showTime = height >= 44 && start.isNotEmpty;
+    final circleSize = showTime ? 22.0 : 20.0;
+    return IgnorePointer(
+      child: SizedBox(
+        height: height,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              width: circleSize,
+              height: circleSize,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isCurrent
+                    ? accentResolved
+                    : accentResolved.withValues(alpha: 0.12),
+              ),
+              child: Text(
+                '$section',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: isCurrent ? CupertinoColors.white : accentResolved,
+                ),
+              ),
+            ),
+            if (showTime) ...[
+              const SizedBox(height: 3),
+              Text(start, style: TextStyle(fontSize: 9, color: subColor)),
+              Text(end, style: TextStyle(fontSize: 9, color: subColor)),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -628,7 +803,6 @@ class _GridPainter extends CustomPainter {
 /// - 普通竖滑 / 横滑不吃,避免和 SingleChildScrollView / PageView 冲突。
 class _DragSelectionOverlay extends StatelessWidget {
   const _DragSelectionOverlay({
-    required this.timeColWidth,
     required this.dayWidth,
     required this.sectionHeight,
     required this.sectionCount,
@@ -641,7 +815,6 @@ class _DragSelectionOverlay extends StatelessWidget {
     required this.onTapEmpty,
   });
 
-  final double timeColWidth;
   final double dayWidth;
   final double sectionHeight;
   final int sectionCount;
@@ -654,7 +827,7 @@ class _DragSelectionOverlay extends StatelessWidget {
   final void Function(int dayIdx, int sec) onTapEmpty;
 
   (int dayIdx, int sec)? _hit(Offset local) {
-    final dx = local.dx - timeColWidth;
+    final dx = local.dx;
     if (dx < 0) return null;
     final dayIdx = (dx / dayWidth).floor();
     if (dayIdx < 0 || dayIdx > 6) return null;
@@ -700,7 +873,7 @@ class _DragSelectionOverlay extends StatelessWidget {
             : Stack(
                 children: [
                   Positioned(
-                    left: timeColWidth + dayWidth * drag!.dayIdx + 2,
+                    left: dayWidth * drag!.dayIdx + 2,
                     top: sectionHeight *
                             ((drag!.startSec < drag!.endSec
                                     ? drag!.startSec
@@ -713,10 +886,12 @@ class _DragSelectionOverlay extends StatelessWidget {
                         4,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: CupertinoColors.systemIndigo.withValues(alpha: 0.2),
+                        color: CupertinoTheme.of(context)
+                            .primaryColor
+                            .withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: CupertinoColors.systemIndigo,
+                          color: CupertinoTheme.of(context).primaryColor,
                           width: 1.5,
                         ),
                       ),

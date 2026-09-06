@@ -27,16 +27,15 @@ class SchoolLoginPage extends StatefulWidget {
 class _SchoolLoginPageState extends State<SchoolLoginPage> {
   InAppWebViewController? _controller;
   bool _fetching = false;
+  bool _loadError = false;
   int _progress = 0;
   String _hint = '请用统一身份认证登录,成功后会自动抓课表';
-  late final Set<String> _trustedHosts;
+  late final String _trustRootHost;
 
   @override
   void initState() {
     super.initState();
-    _trustedHosts = {
-      Uri.parse(widget.provider.entryUrl).host,
-    };
+    _trustRootHost = widget.provider.trustRootHost;
   }
 
   Future<void> _runFetcher() async {
@@ -93,6 +92,19 @@ class _SchoolLoginPageState extends State<SchoolLoginPage> {
                       '$_progress%',
                       style: const TextStyle(fontSize: 12),
                     ),
+                  if (_loadError)
+                    CupertinoButton(
+                      padding: const EdgeInsets.only(left: 8),
+                      minSize: 0,
+                      onPressed: () {
+                        setState(() {
+                          _loadError = false;
+                          _hint = '重试中...';
+                        });
+                        _controller?.reload();
+                      },
+                      child: const Text('重试', style: TextStyle(fontSize: 12)),
+                    ),
                 ],
               ),
             ),
@@ -125,7 +137,10 @@ class _SchoolLoginPageState extends State<SchoolLoginPage> {
                   },
                   onLoadStart: (_, url) {
                     if (!mounted) return;
-                    setState(() => _hint = '加载中:$url');
+                    setState(() {
+                      _loadError = false;
+                      _hint = '加载中:$url';
+                    });
                   },
                   onLoadStop: (controller, url) async {
                     if (!mounted) return;
@@ -154,8 +169,10 @@ class _SchoolLoginPageState extends State<SchoolLoginPage> {
                   },
                   onReceivedServerTrustAuthRequest: (_, challenge) async {
                     final host = challenge.protectionSpace.host;
-                    // 对入口域名(以及同域子路径)一律放行,解决教务证书 CA 缺失问题。
-                    if (_trustedHosts.any((h) => host == h || host.endsWith('.$h'))) {
+                    // 放行信任根域及其所有子域,覆盖登录跳转链路(入口域 → SSO/CAS
+                    // 子域),解决教务/统一认证证书 CA 缺失导致的信任挑战被取消。
+                    if (host == _trustRootHost ||
+                        host.endsWith('.$_trustRootHost')) {
                       return ServerTrustAuthResponse(
                         action: ServerTrustAuthResponseAction.PROCEED,
                       );
@@ -169,6 +186,7 @@ class _SchoolLoginPageState extends State<SchoolLoginPage> {
                     if (!request.isForMainFrame!) return;
                     setState(() {
                       _fetching = false;
+                      _loadError = true;
                       _hint = '页面加载失败(${error.type}):${error.description}';
                     });
                   },

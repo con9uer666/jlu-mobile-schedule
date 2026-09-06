@@ -128,18 +128,13 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       totalWeeks: totalWeeks,
       sectionCount: _maxEndSection(entries),
     );
-    await AppStorage.semesters.put(semester.id, semester);
 
-    for (final old in AppStorage.courses.values
-        .where((c) => c.id.startsWith('$xnxqdm-'))
-        .toList()) {
-      await old.delete();
-    }
-
+    // 先在内存构建所有新课程对象，减少删旧→插新之间的空窗期
     var i = 0;
+    final newCourses = <MapEntry<String, Course>>[];
     for (final e in entries) {
       final id = '$xnxqdm-$i';
-      final course = Course(
+      newCourses.add(MapEntry(id, Course(
         id: id,
         name: e.name,
         teacher: e.teacher,
@@ -149,11 +144,20 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         endSection: e.endSection,
         weeks: e.weeks,
         colorIndex: CourseColors.stableIndex(e.name),
-      );
-      await AppStorage.courses.put(id, course);
+      )));
       i++;
     }
 
+    for (final old in AppStorage.courses.values
+        .where((c) => c.id.startsWith('$xnxqdm-'))
+        .toList()) {
+      await old.delete();
+    }
+    for (final entry in newCourses) {
+      await AppStorage.courses.put(entry.key, entry.value);
+    }
+
+    await AppStorage.semesters.put(semester.id, semester);
     await ref.read(currentSemesterProvider.notifier).setCurrent(semester);
   }
 
@@ -168,11 +172,21 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(middle: Text('从教务导入')),
-      child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
+      backgroundColor:
+          CupertinoColors.systemGroupedBackground.resolveFrom(context),
+      child: CustomScrollView(
+        slivers: [
+          CupertinoSliverNavigationBar(
+            largeTitle: const Text('从教务导入'),
+            backgroundColor: CupertinoColors.systemBackground
+                .resolveFrom(context)
+                .withValues(alpha: 0.7),
+            border: null,
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.all(20),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
             CupertinoFormSection.insetGrouped(
               header: const Text('学校'),
               margin: EdgeInsets.zero,
@@ -235,8 +249,10 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                 ),
               ),
             ],
-          ],
-        ),
+              ]),
+            ),
+          ),
+        ],
       ),
     );
   }

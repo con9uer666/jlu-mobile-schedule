@@ -24,21 +24,19 @@ struct ScheduleWidgetEntryView: View {
     case .systemSmall:
       SmallScheduleView(entry: entry)
     case .systemMedium:
-      ListScheduleView(entry: entry, maxRows: 3)
+      ListScheduleView(entry: entry, maxRows: 2)
     default:
       ListScheduleView(entry: entry, maxRows: 5)
     }
   }
 }
 
-/// iOS 17+:用透明 containerBackground,让 iOS 26 的 Liquid Glass 渲染起作用。
-/// 真正的"深色玻璃"底是在内容层用半透明材质叠出来的,避免挡住系统玻璃层。
 extension View {
   @ViewBuilder
   func widgetBackground() -> some View {
     if #available(iOS 17.0, *) {
       self.containerBackground(for: .widget) {
-        Color.clear
+        Color(UIColor { $0.userInterfaceStyle == .dark ? .black : .white })
       }
     } else {
       self.background(Color(.systemBackground))

@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 
+import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
 
 import '../data/course.dart';
@@ -7,14 +9,16 @@ import '../data/course_override.dart';
 import '../data/semester.dart';
 import '../ui/course_colors.dart';
 
-/// 把"今日课表"推给 Android/iOS 桌面小组件。
+/// 把"今日课表"推给 Android/iOS/macOS 桌面小组件。
 /// 原生侧只负责渲染 — 周次筛选、排序、颜色索引都在 Dart 做好,原生读 JSON 就行。
 class WidgetBridge {
   static const _androidProvider = 'ScheduleWidgetProvider';
   static const _iosName = 'ScheduleWidget';
   static const _groupId = 'group.com.jlu.schedule';
+  static const _macChannel = MethodChannel('com.jlu.schedule/widget');
 
   static Future<void> init() async {
+    if (Platform.isMacOS) return; // macOS 走 MethodChannel, 不用 home_widget
     await HomeWidget.setAppGroupId(_groupId);
   }
 
@@ -31,8 +35,18 @@ class WidgetBridge {
       overrides: overrides,
       now: stamp,
     );
+    final jsonStr = jsonEncode(payload);
 
-    await HomeWidget.saveWidgetData<String>('today_payload', jsonEncode(payload));
+    if (Platform.isMacOS) {
+      try {
+        await _macChannel.invokeMethod<void>('pushTodayPayload', jsonStr);
+      } on MissingPluginException {
+        // 原生侧 channel 没注册时静默忽略
+      }
+      return;
+    }
+
+    await HomeWidget.saveWidgetData<String>('today_payload', jsonStr);
     await HomeWidget.saveWidgetData<String>('today_date', _formatDate(stamp));
     await HomeWidget.saveWidgetData<String>('today_week_label', payload['weekLabel'] as String);
     await HomeWidget.saveWidgetData<String>('today_day_label', payload['dayLabel'] as String);
@@ -76,7 +90,7 @@ class WidgetBridge {
 
     return {
       'updatedAt': now.millisecondsSinceEpoch,
-      'weekLabel': semester == null ? '未设置学期' : '第 $week 周',
+      'weekLabel': semester == null ? '未设置学期' : (week == 0 ? '未开学' : '第 $week 周'),
       'dayLabel': _weekdayLabel(dow),
       'dateShort': '${now.month}.${now.day}',
       'semesterName': semester?.name ?? '',

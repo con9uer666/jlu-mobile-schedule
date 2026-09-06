@@ -161,7 +161,7 @@ class _CourseEditorPageState extends ConsumerState<CourseEditorPage> {
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: _weeks.contains(w)
-                                  ? CupertinoColors.systemIndigo
+                                  ? CupertinoTheme.of(context).primaryColor
                                   : CupertinoColors.systemGrey6,
                               borderRadius: BorderRadius.circular(8),
                             ),

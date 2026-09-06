@@ -43,7 +43,9 @@ class Course extends HiveObject {
     required this.weeks,
     this.colorIndex = 0,
     this.remark,
-  });
+  })  : assert(dayOfWeek >= 1 && dayOfWeek <= 7),
+        assert(startSection >= 1),
+        assert(endSection >= startSection);
 
   bool activeInWeek(int week) => weeks.contains(week);
 }

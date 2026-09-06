@@ -1,9 +1,12 @@
 import SwiftUI
 import WidgetKit
 
-/// 构造点击课程后要跳的 URL。AppDelegate / SceneDelegate 会在打开时解析。
 func courseDeepLink(_ id: String) -> URL? {
-  URL(string: "schedule://course?id=\(id)")
+  var comps = URLComponents()
+  comps.scheme = "schedule"
+  comps.host = "course"
+  comps.queryItems = [URLQueryItem(name: "id", value: id)]
+  return comps.url
 }
 
 // MARK: - Header
@@ -16,17 +19,17 @@ struct ScheduleHeader: View {
       if let d = payload.dateShort, !d.isEmpty {
         Text(d)
           .font(.system(size: 15, weight: .semibold))
-          .foregroundStyle(.primary)
+          .foregroundStyle(Color(.label))
       }
       if !payload.dayLabel.isEmpty {
         Text(payload.dayLabel)
           .font(.system(size: 14, weight: .semibold))
-          .foregroundStyle(Color(red: 1.0, green: 0.23, blue: 0.33))
+          .foregroundStyle(Color(red: 1.0, green: 0.23, blue: 0.18))
       }
       Spacer()
       Text(payload.weekLabel)
         .font(.system(size: 13, weight: .medium))
-        .foregroundStyle(.secondary)
+        .foregroundStyle(Color(.secondaryLabel))
     }
   }
 }
@@ -35,15 +38,10 @@ struct ScheduleHeader: View {
 
 struct ScheduleEmpty: View {
   var body: some View {
-    VStack(spacing: 6) {
-      Image(systemName: "moon.zzz")
-        .font(.system(size: 22))
-        .foregroundStyle(.secondary)
-      Text("今日无课")
-        .font(.system(size: 13))
-        .foregroundStyle(.secondary)
-    }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    Text("今天没课")
+      .font(.system(size: 13))
+      .foregroundStyle(Color(.secondaryLabel))
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 }
 
@@ -53,46 +51,59 @@ struct CourseRow: View {
   let course: CourseItem
   let compact: Bool
 
-  private var timeText: String {
-    let s = course.startTime ?? ""
-    let e = course.endTime ?? ""
-    if !s.isEmpty && !e.isEmpty { return "\(s) – \(e)" }
-    if !s.isEmpty { return s }
-    return course.sectionLabel
+  var body: some View {
+    HStack(alignment: .center, spacing: 0) {
+      // 左侧颜色竖线，带左边距让背景包裹住
+      RoundedRectangle(cornerRadius: 2, style: .continuous)
+        .fill(course.accentColor)
+        .frame(width: 4)
+        .padding(.vertical, compact ? 6 : 8)
+        .padding(.leading, 8)
+
+      HStack(alignment: .center, spacing: 10) {
+        VStack(alignment: .leading, spacing: 2) {
+          Text(course.name)
+            .font(.system(size: compact ? 14 : 15, weight: .bold))
+            .foregroundStyle(Color(.label))
+            .lineLimit(1)
+          let sub = [course.teacher, course.location]
+            .filter { !$0.isEmpty }
+            .joined(separator: " · ")
+          if !sub.isEmpty {
+            Text(sub)
+              .font(.system(size: compact ? 11 : 12))
+              .foregroundStyle(Color(.secondaryLabel))
+              .lineLimit(1)
+          }
+        }
+
+        Spacer(minLength: 4)
+
+        VStack(alignment: .trailing, spacing: 1) {
+          Text(course.startTime ?? course.sectionLabel)
+            .font(.system(size: compact ? 12 : 13, weight: .bold))
+            .foregroundStyle(Color(.label))
+            .monospacedDigit()
+          if let end = course.endTime, !end.isEmpty {
+            Text(end)
+              .font(.system(size: compact ? 12 : 13, weight: .bold))
+              .foregroundStyle(Color(.secondaryLabel))
+              .monospacedDigit()
+          }
+        }
+        .lineLimit(1)
+      }
+      .padding(.leading, 10)
+      .padding(.trailing, 12)
+      .padding(.vertical, compact ? 8 : 10)
+    }
+    .background(courseBackground)
   }
 
-  var body: some View {
-    HStack(alignment: .center, spacing: 10) {
-      VStack(alignment: .leading, spacing: 2) {
-        Text(course.name)
-          .font(.system(size: compact ? 14 : 15, weight: .bold))
-          .foregroundStyle(.white)
-          .lineLimit(1)
-        let sub = [course.teacher, course.location]
-          .filter { !$0.isEmpty }
-          .joined(separator: " · ")
-        if !sub.isEmpty {
-          Text(sub)
-            .font(.system(size: compact ? 11 : 12))
-            .foregroundStyle(.white.opacity(0.85))
-            .lineLimit(1)
-        }
-      }
-
-      Spacer(minLength: 4)
-
-      Text(timeText)
-        .font(.system(size: compact ? 12 : 13, weight: .semibold))
-        .foregroundStyle(.white.opacity(0.9))
-        .monospacedDigit()
-        .lineLimit(1)
-    }
-    .padding(.horizontal, 12)
-    .padding(.vertical, compact ? 8 : 10)
-    .background(
-      RoundedRectangle(cornerRadius: 12, style: .continuous)
-        .fill(course.bgColor)
-    )
+  @ViewBuilder
+  private var courseBackground: some View {
+    RoundedRectangle(cornerRadius: 12, style: .continuous)
+      .fill(Color(.tertiarySystemFill))
   }
 }
 
@@ -102,29 +113,31 @@ struct SmallCourseRow: View {
   let course: CourseItem
 
   var body: some View {
-    HStack(alignment: .top, spacing: 6) {
+    HStack(alignment: .center, spacing: 6) {
       Circle()
         .fill(course.accentColor)
         .frame(width: 6, height: 6)
-        .padding(.top, 5)
       VStack(alignment: .leading, spacing: 1) {
         Text(course.name)
           .font(.system(size: 12, weight: .semibold))
-          .foregroundStyle(.primary)
-          .lineLimit(1)
-        if !course.location.isEmpty {
-          Text(course.location)
-            .font(.system(size: 10))
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
+          .foregroundStyle(Color(.label))
+          .lineLimit(2)
+          .fixedSize(horizontal: false, vertical: true)
+        HStack(spacing: 0) {
+          if !course.location.isEmpty {
+            Text(course.location)
+              .font(.system(size: 10))
+              .foregroundStyle(Color(.secondaryLabel))
+              .lineLimit(1)
+          }
+          Spacer(minLength: 4)
+          if let t = course.startTime, !t.isEmpty {
+            Text(t)
+              .font(.system(size: 10, weight: .medium))
+              .foregroundStyle(Color(.secondaryLabel))
+              .monospacedDigit()
+          }
         }
-      }
-      Spacer(minLength: 4)
-      if let t = course.startTime, !t.isEmpty {
-        Text(t)
-          .font(.system(size: 12, weight: .semibold))
-          .foregroundStyle(.primary)
-          .monospacedDigit()
       }
     }
   }
@@ -143,12 +156,12 @@ struct SmallScheduleView: View {
         if !entry.payload.dayLabel.isEmpty {
           Text(entry.payload.dayLabel)
             .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(Color(red: 1.0, green: 0.23, blue: 0.33))
+            .foregroundStyle(Color(red: 1.0, green: 0.23, blue: 0.18))
         }
         Spacer()
         Text(entry.payload.weekLabel)
           .font(.system(size: 10))
-          .foregroundStyle(.secondary)
+          .foregroundStyle(Color(.secondaryLabel))
       }
 
       if shown.isEmpty {
@@ -161,14 +174,14 @@ struct SmallScheduleView: View {
             SmallCourseRow(course: c)
           }
           if idx < shown.count - 1 {
-            Divider().opacity(0.2)
+            Divider().opacity(0.3)
           }
         }
+        Spacer(minLength: 0)
       }
-      Spacer(minLength: 0)
     }
-    .padding(.horizontal, 12)
-    .padding(.vertical, 10)
+    .padding(.horizontal, 10)
+    .padding(.vertical, 8)
   }
 }
 
@@ -181,11 +194,14 @@ struct ListScheduleView: View {
   var body: some View {
     let shown = Array(entry.payload.upcomingCourses(now: entry.date).prefix(maxRows))
 
-    VStack(alignment: .leading, spacing: 10) {
+    VStack(alignment: .leading, spacing: 0) {
       ScheduleHeader(payload: entry.payload)
       if shown.isEmpty {
+        Spacer(minLength: 0)
         ScheduleEmpty()
+        Spacer(minLength: 0)
       } else {
+        Spacer(minLength: 6)
         VStack(spacing: 6) {
           ForEach(shown) { c in
             if let url = courseDeepLink(c.id) {
@@ -197,10 +213,11 @@ struct ListScheduleView: View {
             }
           }
         }
-        Spacer(minLength: 0)
+        Spacer(minLength: 6)
       }
     }
     .padding(.horizontal, 14)
-    .padding(.vertical, 12)
+    .padding(.top, 14)
+    .padding(.bottom, 10)
   }
 }

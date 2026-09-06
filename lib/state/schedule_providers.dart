@@ -37,9 +37,20 @@ final currentWeekProvider = StateProvider<int>((ref) {
 });
 
 final coursesProvider = StreamProvider<List<Course>>((ref) async* {
-  yield AppStorage.courses.values.toList();
+  // 每个学期的课程以“学期 ID-序号”保存；界面只展示当前学期，
+  // 避免导入多个学期后课程互相混在一起。
+  final semester = ref.watch(currentSemesterProvider);
+  List<Course> currentCourses() {
+    if (semester == null) return const <Course>[];
+    final prefix = '${semester.id}-';
+    return AppStorage.courses.values
+        .where((course) => course.id.startsWith(prefix))
+        .toList();
+  }
+
+  yield currentCourses();
   await for (final _ in AppStorage.courses.watch()) {
-    yield AppStorage.courses.values.toList();
+    yield currentCourses();
   }
 });
 

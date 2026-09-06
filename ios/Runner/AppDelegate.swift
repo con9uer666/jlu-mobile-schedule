@@ -4,8 +4,6 @@ import UIKit
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
 
-  // Widget 点课程后,iOS 用 schedule://course?id=... 打开 app。
-  // 把 courseId 缓存给 MethodChannel,等 Dart 端来取。
   private var pendingCourseId: String?
   private var methodChannel: FlutterMethodChannel?
 
@@ -33,6 +31,18 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+
+    // iOS 26 Liquid Glass：让 Flutter window 背景透明，底层插入 UIVisualEffectView。
+    // iOS 26 会自动将 UIBlurEffect(style: .systemMaterial) 升级为 Liquid Glass 渲染。
+    if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+       let window = scene.windows.first(where: { $0.isKeyWindow }),
+       let rootVC = window.rootViewController {
+      rootVC.view.backgroundColor = .clear
+      let blur = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterial))
+      blur.frame = rootVC.view.bounds
+      blur.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+      rootVC.view.insertSubview(blur, at: 0)
+    }
 
     let channel = FlutterMethodChannel(
       name: "com.jlu.schedule/widget",

@@ -32,6 +32,12 @@ abstract class SchoolProvider {
   /// 登录入口 URL。WebView 直接加载。
   String get entryUrl;
 
+  /// 证书放行的根域。统一身份认证登录常会从入口域跳到同校的 SSO/CAS 子域
+  /// (如 iedu.jlu.edu.cn → cas.jlu.edu.cn),这些子域若用学校私有 CA,会触发
+  /// WebView 的服务器信任挑战。放行该根域及其所有子域即可覆盖整条登录链路。
+  /// 默认只放行入口域名本身;各校按需放宽到根域。
+  String get trustRootHost => Uri.parse(entryUrl).host;
+
   /// WebView UA。有些教务对 PC UA 会返回不同页面,交给 provider 决定。
   String get userAgent;
 

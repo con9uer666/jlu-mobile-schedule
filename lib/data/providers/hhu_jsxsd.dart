@@ -29,6 +29,10 @@ class HhuJsxsdProvider extends SchoolProvider {
   @override
   String get entryUrl => 'https://jwxt.hhu.edu.cn/jsxsd/';
 
+  // 登录可能跳到河海的统一认证子域,放行整个 hhu.edu.cn 根域。
+  @override
+  String get trustRootHost => 'hhu.edu.cn';
+
   @override
   String get userAgent =>
       'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '

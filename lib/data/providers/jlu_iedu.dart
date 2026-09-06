@@ -17,6 +17,10 @@ class JluIeduProvider extends SchoolProvider {
   String get entryUrl =>
       'https://iedu.jlu.edu.cn/jwapp/sys/wdkb/*default/index.do?THEME=indigo&EMAP_LANG=zh';
 
+  // 登录会跳到 cas.jlu.edu.cn(TPass 统一身份认证),放行整个 jlu.edu.cn 根域。
+  @override
+  String get trustRootHost => 'jlu.edu.cn';
+
   @override
   String get userAgent =>
       'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '

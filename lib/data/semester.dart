@@ -34,7 +34,7 @@ class Semester extends HiveObject {
     final diff = now
         .difference(DateTime(startDate.year, startDate.month, startDate.day))
         .inDays;
-    if (diff < 0) return 1;
+    if (diff < 0) return 0;
     final week = diff ~/ 7 + 1;
     return week.clamp(1, totalWeeks);
   }

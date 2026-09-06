@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import os
 
 /// 跟 Dart 侧 WidgetBridge 输出的 JSON 结构对齐。
 struct TodayPayload: Decodable {
@@ -70,8 +71,13 @@ enum PayloadStore {
     for k in candidateKeys {
       guard let raw = defaults.string(forKey: k),
             let data = raw.data(using: .utf8) else { continue }
-      if let decoded = try? JSONDecoder().decode(TodayPayload.self, from: data) {
-        return decoded
+      do {
+        return try JSONDecoder().decode(TodayPayload.self, from: data)
+      } catch {
+        #if DEBUG
+        os_log(.error, "ScheduleWidget: JSON decode failed for key %{public}@: %{public}@",
+               k, String(describing: error))
+        #endif
       }
     }
     return .empty
