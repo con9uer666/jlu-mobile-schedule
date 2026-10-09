@@ -6,7 +6,7 @@
 
 发布版本会随 GitHub Release 提供 APK：
 
-[下载最新 Android APK](https://github.com/con9uer666/schedule/releases/latest/download/jilin-university-schedule.apk)
+[下载最新 Android APK](https://github.com/con9uer666/jlu-mobile-schedule/releases/latest/download/jilin-university-schedule.apk)
 
 如果仓库保持私有，下载链接只对仓库成员开放；要让所有用户直接下载，需要将仓库设为公开，或把 APK 放到其他公开文件托管服务。
 
