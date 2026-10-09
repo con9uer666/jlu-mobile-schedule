@@ -4,6 +4,9 @@ import '../navigation/nav_keys.dart';
 import '../navigation/tab_router.dart';
 import 'agenda_page.dart';
 import 'home_page.dart';
+import 'settings_page.dart';
+import 'study_list_page.dart';
+import '../data/study_item.dart';
 import 'widgets/glass_pill.dart';
 
 class RootTabScaffold extends StatefulWidget {
@@ -43,8 +46,7 @@ class _RootTabScaffoldState extends State<RootTabScaffold> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      backgroundColor:
-          CupertinoColors.systemBackground.resolveFrom(context),
+      backgroundColor: CupertinoColors.systemBackground.resolveFrom(context),
       child: Stack(
         children: [
           _TabHost(
@@ -57,6 +59,24 @@ class _RootTabScaffoldState extends State<RootTabScaffold> {
               CupertinoTabView(
                 navigatorKey: agendaTabNavKey,
                 builder: (_) => const AgendaPage(),
+              ),
+              CupertinoTabView(
+                navigatorKey: assignmentTabNavKey,
+                builder: (_) =>
+                    const StudyListPage(kind: StudyItemKind.assignment),
+              ),
+              CupertinoTabView(
+                navigatorKey: examTabNavKey,
+                builder: (_) => const StudyListPage(kind: StudyItemKind.exam),
+              ),
+              CupertinoTabView(
+                navigatorKey: personalTabNavKey,
+                builder: (_) =>
+                    const StudyListPage(kind: StudyItemKind.personal),
+              ),
+              CupertinoTabView(
+                navigatorKey: settingsTabNavKey,
+                builder: (_) => const SettingsPage(),
               ),
             ],
           ),
@@ -75,8 +95,15 @@ class _RootTabScaffoldState extends State<RootTabScaffold> {
                     _TabItem(icon: CupertinoIcons.calendar, label: '课程表'),
                     _TabItem(
                       icon: CupertinoIcons.list_bullet_below_rectangle,
-                      label: '日程',
+                      label: '今日',
                     ),
+                    _TabItem(icon: CupertinoIcons.book, label: '作业'),
+                    _TabItem(icon: CupertinoIcons.doc_text, label: '考试'),
+                    _TabItem(
+                      icon: CupertinoIcons.check_mark_circled,
+                      label: '待办',
+                    ),
+                    _TabItem(icon: CupertinoIcons.settings, label: '设置'),
                   ],
                 ),
               ),
@@ -104,10 +131,7 @@ class _TabHost extends StatelessWidget {
         for (int i = 0; i < tabs.length; i++)
           Offstage(
             offstage: i != index,
-            child: TickerMode(
-              enabled: i == index,
-              child: tabs[i],
-            ),
+            child: TickerMode(enabled: i == index, child: tabs[i]),
           ),
       ],
     );
@@ -138,6 +162,7 @@ class _FloatingTabBar extends StatelessWidget {
 
     return GlassPill(
       radius: 32,
+      sigma: 36,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
         child: Row(
@@ -182,28 +207,28 @@ class _PillTab extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 9),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(26),
           color: selected
-              ? accent.withValues(alpha: 0.14)
+              ? accent.withValues(alpha: 0.11)
               : const Color(0x00000000),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(item.icon, size: 20, color: fg),
+            Icon(item.icon, size: 17, color: fg),
             AnimatedSize(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOutCubic,
               child: selected
                   ? Padding(
-                      padding: const EdgeInsets.only(left: 6),
+                      padding: const EdgeInsets.only(left: 4),
                       child: Text(
                         item.label,
                         style: TextStyle(
                           color: fg,
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

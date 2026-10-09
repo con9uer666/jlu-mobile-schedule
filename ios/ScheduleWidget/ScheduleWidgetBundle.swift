@@ -10,8 +10,9 @@ struct ScheduleWidget: Widget {
         .widgetBackground()
     }
     .configurationDisplayName("课程表")
-    .description("显示今天的课程")
+    .description("突出显示下一节课和接下来的课程")
     .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+    .contentMarginsDisabled()
   }
 }
 
@@ -20,14 +21,17 @@ struct ScheduleWidgetEntryView: View {
   let entry: ScheduleEntry
 
   var body: some View {
-    switch family {
-    case .systemSmall:
-      SmallScheduleView(entry: entry)
-    case .systemMedium:
-      ListScheduleView(entry: entry, maxRows: 2)
-    default:
-      ListScheduleView(entry: entry, maxRows: 5)
+    Group {
+      switch family {
+      case .systemSmall:
+        SmallScheduleView(entry: entry)
+      case .systemMedium:
+        MediumScheduleView(entry: entry)
+      default:
+        ListScheduleView(entry: entry, maxRows: 5)
+      }
     }
+    .clipped()
   }
 }
 

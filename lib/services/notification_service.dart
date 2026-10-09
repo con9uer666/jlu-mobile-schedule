@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -12,6 +13,7 @@ import '../data/event_item.dart';
 import '../data/recurrence_rule.dart';
 import '../data/reminder.dart';
 import '../data/semester.dart';
+import '../data/study_item.dart';
 import 'recurrence.dart';
 
 typedef DeepLinkHandler = void Function(Uri uri);
@@ -22,6 +24,8 @@ class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
   static DeepLinkHandler? _deepLinkHandler;
   static bool _initialized = false;
+  static AndroidScheduleMode _androidScheduleMode =
+      AndroidScheduleMode.exactAllowWhileIdle;
 
   /// 在 main() 中尽早调用。串行,无网络。
   static Future<void> init({DeepLinkHandler? onDeepLink}) async {
@@ -39,8 +43,13 @@ class NotificationService {
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
+    const androidInit = AndroidInitializationSettings('ic_notification');
     await _plugin.initialize(
-      const InitializationSettings(iOS: darwinInit, macOS: darwinInit),
+      const InitializationSettings(
+        android: androidInit,
+        iOS: darwinInit,
+        macOS: darwinInit,
+      ),
       onDidReceiveNotificationResponse: _onTap,
     );
     _initialized = true;
@@ -48,16 +57,44 @@ class NotificationService {
 
   static Future<bool> requestPermissions() async {
     if (!_initialized) return false;
-    final ios = _plugin.resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>();
+    if (Platform.isAndroid) {
+      final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >();
+      if (android == null) return false;
+      final notificationsGranted =
+          await android.requestNotificationsPermission() ?? true;
+      try {
+        await android.requestExactAlarmsPermission();
+      } catch (_) {
+        // Exact alarms are optional on older Android versions and on devices
+        // that do not expose the permission flow.
+      }
+      await _refreshAndroidScheduleMode();
+      return notificationsGranted;
+    }
+    final ios = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
     if (ios != null) {
-      final g = await ios.requestPermissions(alert: true, badge: true, sound: true);
+      final g = await ios.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
       return g ?? false;
     }
-    final mac = _plugin.resolvePlatformSpecificImplementation<
-        MacOSFlutterLocalNotificationsPlugin>();
+    final mac = _plugin
+        .resolvePlatformSpecificImplementation<
+          MacOSFlutterLocalNotificationsPlugin
+        >();
     if (mac != null) {
-      final g = await mac.requestPermissions(alert: true, badge: true, sound: true);
+      final g = await mac.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
       return g ?? false;
     }
     return false;
@@ -65,14 +102,24 @@ class NotificationService {
 
   static Future<bool> checkPermissionGranted() async {
     if (!_initialized) return false;
-    final ios = _plugin.resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>();
+    if (Platform.isAndroid) {
+      final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >();
+      return await android?.areNotificationsEnabled() ?? false;
+    }
+    final ios = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
     if (ios != null) {
       final s = await ios.checkPermissions();
       return s?.isEnabled ?? false;
     }
-    final mac = _plugin.resolvePlatformSpecificImplementation<
-        MacOSFlutterLocalNotificationsPlugin>();
+    final mac = _plugin
+        .resolvePlatformSpecificImplementation<
+          MacOSFlutterLocalNotificationsPlugin
+        >();
     if (mac != null) {
       final s = await mac.checkPermissions();
       return s?.isEnabled ?? false;
@@ -92,6 +139,7 @@ class NotificationService {
   ///
   /// iOS 64 通知上限:events 优先,课程取剩余。
   static Future<void> rescheduleAll({
+    required List<StudyItem> studyItems,
     required List<EventItem> events,
     required List<Course> courses,
     required Map<String, CourseReminderSetting> courseReminders,
@@ -102,10 +150,21 @@ class NotificationService {
     if (!_initialized) return;
     await _plugin.cancelAll();
     if (!await checkPermissionGranted()) return;
+    await _refreshAndroidScheduleMode();
 
     int slotsLeft = 64;
     final now = DateTime.now();
     final eventWindowEnd = now.add(const Duration(days: 30));
+
+    final activeStudy =
+        studyItems
+            .where((item) => !item.isCompleted && item.startAt.isAfter(now))
+            .toList()
+          ..sort((a, b) => a.startAt.compareTo(b.startAt));
+    for (final item in activeStudy) {
+      slotsLeft = await _scheduleStudyItem(item, now, slotsLeft);
+      if (slotsLeft <= 0) return;
+    }
 
     for (final e in events) {
       if (e.reminders.isEmpty) continue;
@@ -116,8 +175,14 @@ class NotificationService {
     if (semester != null) {
       final t0 = DateTime(now.year, now.month, now.day);
       final courseWindowEnd = t0.add(const Duration(days: 2));
+      // Callers may pass all persisted courses. Keep the semester boundary
+      // here as a final guard so notifications can never contain a course
+      // from another semester.
+      final semesterCourses = courses
+          .where((course) => course.id.startsWith('${semester.id}-'))
+          .toList();
       slotsLeft = await _scheduleCourses(
-        courses,
+        semesterCourses,
         courseReminders,
         semester,
         now,
@@ -129,6 +194,41 @@ class NotificationService {
     }
   }
 
+  static Future<int> _scheduleStudyItem(
+    StudyItem item,
+    DateTime now,
+    int slotsLeft,
+  ) async {
+    for (final minutes in item.reminderMinutes) {
+      if (slotsLeft <= 0) return 0;
+      final fire = item.startAt.subtract(Duration(minutes: minutes));
+      if (fire.isBefore(now)) continue;
+      final kind = switch (item.kind) {
+        StudyItemKind.assignment => '作业',
+        StudyItemKind.exam => '考试',
+        StudyItemKind.personal => '待办',
+      };
+      final suffix = minutes >= 1440
+          ? '${minutes ~/ 1440} 天后'
+          : minutes >= 60
+          ? '${minutes ~/ 60} 小时后'
+          : '$minutes 分钟后';
+      await _plugin.zonedSchedule(
+        _notifId('study_${item.id}', minutes),
+        item.title,
+        '$kind · $suffix',
+        tz.TZDateTime.from(fire, tz.local),
+        _details(),
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'schedule://study?id=${Uri.encodeQueryComponent(item.id)}',
+        androidScheduleMode: _androidScheduleMode,
+      );
+      slotsLeft--;
+    }
+    return slotsLeft;
+  }
+
   static Future<int> _scheduleEvent(
     EventItem e,
     DateTime now,
@@ -138,7 +238,8 @@ class NotificationService {
     if (slotsLeft <= 0) return 0;
 
     final r = e.recurrence;
-    final canUseRepeat = r != null &&
+    final canUseRepeat =
+        r != null &&
         r.freq != RecurrenceFreq.none &&
         r.interval == 1 &&
         r.until == null &&
@@ -166,7 +267,7 @@ class NotificationService {
               UILocalNotificationDateInterpretation.absoluteTime,
           matchDateTimeComponents: _matchFor(r.freq),
           payload: 'schedule://event?id=${Uri.encodeQueryComponent(e.id)}',
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          androidScheduleMode: _androidScheduleMode,
         );
         slotsLeft--;
       }
@@ -196,7 +297,7 @@ class NotificationService {
           uiLocalNotificationDateInterpretation:
               UILocalNotificationDateInterpretation.absoluteTime,
           payload: 'schedule://event?id=${Uri.encodeQueryComponent(e.id)}',
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          androidScheduleMode: _androidScheduleMode,
         );
         slotsLeft--;
       }
@@ -252,7 +353,7 @@ class NotificationService {
           uiLocalNotificationDateInterpretation:
               UILocalNotificationDateInterpretation.absoluteTime,
           payload: 'schedule://course?id=${Uri.encodeQueryComponent(c.id)}',
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          androidScheduleMode: _androidScheduleMode,
         );
         slotsLeft--;
       }
@@ -283,6 +384,14 @@ class NotificationService {
 
   static NotificationDetails _details() {
     return const NotificationDetails(
+      android: AndroidNotificationDetails(
+        'schedule_reminders',
+        '课程提醒',
+        channelDescription: '课程、作业、考试和待办提醒',
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: 'ic_notification',
+      ),
       iOS: DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
@@ -298,6 +407,17 @@ class NotificationService {
     );
   }
 
+  static Future<void> _refreshAndroidScheduleMode() async {
+    if (!Platform.isAndroid) return;
+    final android = _plugin.resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin
+    >();
+    final exact = await android?.canScheduleExactNotifications();
+    _androidScheduleMode = exact == false
+        ? AndroidScheduleMode.inexactAllowWhileIdle
+        : AndroidScheduleMode.exactAllowWhileIdle;
+  }
+
   static String _bodyForEvent(EventItem e, Reminder rem) {
     final pieces = <String>[];
     if (rem.amount != 0) pieces.add(rem.label());
@@ -311,18 +431,38 @@ class NotificationService {
   }
 }
 
-/// 用于 Riverpod 监听日程/课程/课程提醒变化后触发重排,debounce 500ms。
+/// 用于 Riverpod 监听日程/课程/课程提醒变化后触发重排。
+/// 连续变化 debounce 500ms,原生通知操作期间则串行执行最新一轮。
 class NotificationRescheduler {
   NotificationRescheduler({required this.run});
 
   final Future<void> Function() run;
   Timer? _timer;
+  int _requestVersion = 0;
+  bool _running = false;
 
   void requestReschedule() {
+    _requestVersion++;
     _timer?.cancel();
-    _timer = Timer(const Duration(milliseconds: 500), () async {
+    _timer = Timer(const Duration(milliseconds: 500), _runLatest);
+  }
+
+  Future<void> _runLatest() async {
+    if (_running) return;
+    _running = true;
+    final version = _requestVersion;
+    try {
       await run();
-    });
+    } finally {
+      _running = false;
+      // A change arrived while the previous native notification operation was
+      // in flight. Run once more after it finishes, so an older snapshot can
+      // never be the final set of scheduled notifications.
+      if (_requestVersion != version) {
+        _timer?.cancel();
+        _timer = Timer(Duration.zero, _runLatest);
+      }
+    }
   }
 
   void dispose() {

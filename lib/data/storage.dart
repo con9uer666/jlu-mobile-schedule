@@ -13,6 +13,7 @@ import 'recurrence_rule.dart';
 import 'reminder.dart';
 import 'semester.dart';
 import 'semester.g.dart';
+import 'study_item.dart';
 
 class AppStorage {
   static const coursesBox = 'courses';
@@ -22,6 +23,7 @@ class AppStorage {
   static const eventsBox = 'events';
   static const courseRemindersBox = 'course_reminders';
   static const daySwapsBox = 'day_swaps';
+  static const studyItemsBox = 'study_items';
 
   static late Box<Course> courses;
   static late Box<Semester> semesters;
@@ -30,6 +32,7 @@ class AppStorage {
   static late Box<EventItem> events;
   static late Box<CourseReminderSetting> courseReminders;
   static late Box<DaySwap> daySwaps;
+  static late Box<StudyItem> studyItems;
 
   static Future<void> openAll() async {
     Hive.registerAdapter(CourseAdapter());
@@ -42,14 +45,17 @@ class AppStorage {
     Hive.registerAdapter(ReminderAdapter());
     Hive.registerAdapter(ReminderUnitAdapter());
     Hive.registerAdapter(CourseReminderSettingAdapter());
+    Hive.registerAdapter(StudyItemAdapter());
 
     courses = await Hive.openBox<Course>(coursesBox);
     semesters = await Hive.openBox<Semester>(semestersBox);
     settings = await Hive.openBox(settingsBox);
     overrides = await Hive.openBox<CourseOverride>(overridesBox);
     events = await Hive.openBox<EventItem>(eventsBox);
-    courseReminders =
-        await Hive.openBox<CourseReminderSetting>(courseRemindersBox);
+    courseReminders = await Hive.openBox<CourseReminderSetting>(
+      courseRemindersBox,
+    );
     daySwaps = await Hive.openBox<DaySwap>(daySwapsBox);
+    studyItems = await Hive.openBox<StudyItem>(studyItemsBox);
   }
 }

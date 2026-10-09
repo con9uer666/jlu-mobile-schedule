@@ -1,10 +1,12 @@
 import 'package:flutter/cupertino.dart';
 
 import '../data/storage.dart';
+import '../data/study_item.dart';
 import '../navigation/nav_keys.dart';
 import '../navigation/tab_router.dart';
 import '../ui/course_detail_sheet.dart';
 import '../ui/event_editor_page.dart';
+import '../ui/study_item_editor_page.dart';
 
 class DeepLinkRouter {
   DeepLinkRouter._();
@@ -21,6 +23,9 @@ class DeepLinkRouter {
         if (id != null && id.isNotEmpty) _openEvent(id);
       case 'agenda':
         TabRouter.switchTo(1);
+      case 'study':
+        final id = uri.queryParameters['id'];
+        if (id != null && id.isNotEmpty) _openStudy(id);
     }
   }
 
@@ -67,6 +72,22 @@ class DeepLinkRouter {
     TabRouter.pushOnTab(
       1,
       CupertinoPageRoute(builder: (_) => EventEditorPage(existing: event)),
+    );
+  }
+
+  static void _openStudy(String id) {
+    final item = AppStorage.studyItems.get(id);
+    if (item == null) return;
+    final tab = switch (item.kind) {
+      StudyItemKind.assignment => 2,
+      StudyItemKind.exam => 3,
+      StudyItemKind.personal => 4,
+    };
+    TabRouter.pushOnTab(
+      tab,
+      CupertinoPageRoute(
+        builder: (_) => StudyItemEditorPage(kind: item.kind, existing: item),
+      ),
     );
   }
 }

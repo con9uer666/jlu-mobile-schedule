@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/course.dart';
+import '../data/course_id.dart';
 import '../data/providers/registry.dart';
 import '../data/raw_entry.dart';
 import '../data/school_provider.dart';
@@ -30,8 +31,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   void initState() {
     super.initState();
     final savedId = AppStorage.settings.get(_prefKey) as String?;
-    _provider = (savedId == null ? null : findProvider(savedId)) ??
-        defaultProvider;
+    _provider =
+        (savedId == null ? null : findProvider(savedId)) ?? defaultProvider;
   }
 
   Future<void> _pickSchool() async {
@@ -67,9 +68,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     });
 
     final bundle = await Navigator.of(context).push<Map<String, dynamic>>(
-      CupertinoPageRoute(
-        builder: (_) => SchoolLoginPage(provider: _provider),
-      ),
+      CupertinoPageRoute(builder: (_) => SchoolLoginPage(provider: _provider)),
     );
     if (bundle == null) {
       if (mounted) setState(() => _busy = false);
@@ -86,9 +85,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         context: context,
         builder: (ctx) => CupertinoAlertDialog(
           title: const Text('导入完成'),
-          content: Text(
-            '学期:${bundle['termName']}\n共解析 $entries 条排课记录',
-          ),
+          content: Text('学期:${bundle['termName']}\n共解析 $entries 条排课记录'),
           actions: [
             CupertinoDialogAction(
               onPressed: () => Navigator.of(ctx).pop(),
@@ -134,23 +131,33 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     final newCourses = <MapEntry<String, Course>>[];
     for (final e in entries) {
       final id = '$xnxqdm-$i';
-      newCourses.add(MapEntry(id, Course(
-        id: id,
-        name: e.name,
-        teacher: e.teacher,
-        location: e.location,
-        dayOfWeek: e.dayOfWeek,
-        startSection: e.startSection,
-        endSection: e.endSection,
-        weeks: e.weeks,
-        colorIndex: CourseColors.stableIndex(e.name),
-      )));
+      newCourses.add(
+        MapEntry(
+          id,
+          Course(
+            id: id,
+            name: e.name,
+            teacher: e.teacher,
+            location: e.location,
+            dayOfWeek: e.dayOfWeek,
+            startSection: e.startSection,
+            endSection: e.endSection,
+            weeks: e.weeks,
+            colorIndex: CourseColors.stableIndex(e.name),
+          ),
+        ),
+      );
       i++;
     }
 
-    for (final old in AppStorage.courses.values
-        .where((c) => c.id.startsWith('$xnxqdm-'))
-        .toList()) {
+    for (final old
+        in AppStorage.courses.values
+            .where(
+              (c) =>
+                  c.id.startsWith('$xnxqdm-') &&
+                  !isManualCourseId(xnxqdm, c.id),
+            )
+            .toList()) {
       await old.delete();
     }
     for (final entry in newCourses) {
@@ -172,8 +179,9 @@ class _ImportPageState extends ConsumerState<ImportPage> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      backgroundColor:
-          CupertinoColors.systemGroupedBackground.resolveFrom(context),
+      backgroundColor: CupertinoColors.systemGroupedBackground.resolveFrom(
+        context,
+      ),
       child: CustomScrollView(
         slivers: [
           CupertinoSliverNavigationBar(
@@ -187,68 +195,68 @@ class _ImportPageState extends ConsumerState<ImportPage> {
             padding: const EdgeInsets.all(20),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-            CupertinoFormSection.insetGrouped(
-              header: const Text('学校'),
-              margin: EdgeInsets.zero,
-              children: [
-                CupertinoFormRow(
-                  prefix: const Text('教务系统'),
-                  child: CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: _busy ? null : _pickSchool,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_provider.displayName),
-                        const SizedBox(width: 4),
-                        const Icon(CupertinoIcons.chevron_right, size: 14),
-                      ],
+                CupertinoFormSection.insetGrouped(
+                  header: const Text('学校'),
+                  margin: EdgeInsets.zero,
+                  children: [
+                    CupertinoFormRow(
+                      prefix: const Text('教务系统'),
+                      child: CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: _busy ? null : _pickSchool,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(_provider.displayName),
+                            const SizedBox(width: 4),
+                            const Icon(CupertinoIcons.chevron_right, size: 14),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '点击下方按钮会打开学校统一身份认证登录页,登录成功后会自动返回并抓取本学期课表。账号密码不经过本 App。',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                CupertinoButton.filled(
+                  onPressed: _busy ? null : _start,
+                  child: _busy
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const CupertinoActivityIndicator(
+                              color: CupertinoColors.white,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(_status, style: const TextStyle(fontSize: 14)),
+                          ],
+                        )
+                      : const Text('开始导入'),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: CupertinoColors.systemRed.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(
+                        color: CupertinoColors.systemRed,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '点击下方按钮会打开学校统一身份认证登录页,登录成功后会自动返回并抓取本学期课表。账号密码不经过本 App。',
-              style: TextStyle(
-                fontSize: 13,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
-              ),
-            ),
-            const SizedBox(height: 24),
-            CupertinoButton.filled(
-              onPressed: _busy ? null : _start,
-              child: _busy
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const CupertinoActivityIndicator(
-                          color: CupertinoColors.white,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(_status, style: const TextStyle(fontSize: 14)),
-                      ],
-                    )
-                  : const Text('开始导入'),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: CupertinoColors.systemRed.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  _error!,
-                  style: const TextStyle(
-                    color: CupertinoColors.systemRed,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ],
+                ],
               ]),
             ),
           ),

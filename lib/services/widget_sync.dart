@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/storage.dart';
@@ -10,18 +12,18 @@ class WidgetSync {
   WidgetSync._(this._ref);
 
   final Ref _ref;
-
-  static void attach(Ref ref) {
-    final sync = WidgetSync._(ref);
-    sync._start();
-  }
+  StreamSubscription<dynamic>? _daySwapSubscription;
 
   void _start() {
     _push();
     _ref.listen(currentSemesterProvider, (_, next) => _push());
     _ref.listen(coursesProvider, (_, next) => _push());
     _ref.listen(overridesProvider, (_, next) => _push());
+    _daySwapSubscription = AppStorage.daySwaps.watch().listen((_) => _push());
+    _ref.onDispose(() => _daySwapSubscription?.cancel());
   }
+
+  Future<void> refresh() => _push();
 
   Future<void> _push() async {
     final sem = _ref.read(currentSemesterProvider);
@@ -31,10 +33,13 @@ class WidgetSync {
       semester: sem,
       allCourses: courses,
       overrides: overrides,
+      daySwaps: AppStorage.daySwaps.values.toList(),
     );
   }
 }
 
-final widgetSyncProvider = Provider<void>((ref) {
-  WidgetSync.attach(ref);
+final widgetSyncProvider = Provider<WidgetSync>((ref) {
+  final sync = WidgetSync._(ref);
+  sync._start();
+  return sync;
 });

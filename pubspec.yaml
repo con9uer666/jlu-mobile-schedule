@@ -1,5 +1,5 @@
 name: schedule
-description: "A new Flutter project."
+description: "吉林大学手机课表：支持课表、调课、提醒、桌面小组件和学习事项管理。"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.11.5
@@ -62,6 +62,14 @@ dev_dependencies:
   build_runner: ^2.4.11
   hive_generator: ^2.0.1
   riverpod_generator: ^2.4.0
+
+# path_provider_foundation 2.6.0 switches iOS to an Objective-C FFI
+# framework (objective_c.framework). That generated framework can fail
+# installation-time signature verification when the IPA is re-signed by a
+# sideloading tool. Keep the stable plugin-based implementation until the FFI
+# packaging/signing path is fixed upstream.
+dependency_overrides:
+  path_provider_foundation: 2.5.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

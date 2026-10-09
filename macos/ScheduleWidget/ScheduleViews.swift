@@ -37,8 +37,10 @@ struct ScheduleHeader: View {
 // MARK: - Empty state
 
 struct ScheduleEmpty: View {
+  let title: String = "今天没课"
+  let subtitle: String? = nil
   var body: some View {
-    Text("今天没课")
+    Text(title)
       .font(.system(size: 13))
       .foregroundStyle(Color.secondary)
       .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -2,6 +2,7 @@ package com.jlu.schedule.widget
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.graphics.Color
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
@@ -49,7 +50,7 @@ class ScheduleRemoteViewsFactory(
         val location = item.optString("location")
         val startTime = item.optString("startTime")
         val endTime = item.optString("endTime")
-        val bgHex = item.optString("colorBg")
+        val accentHex = item.optString("colorAccent")
 
         views.setTextViewText(R.id.item_name, name)
         val sub = buildString {
@@ -70,12 +71,16 @@ class ScheduleRemoteViewsFactory(
         }
         views.setTextViewText(R.id.item_time, timeText)
 
-        val bg = parseColor(bgHex, Color.parseColor("#FF3D5AFE"))
-        views.setInt(R.id.item_root, "setBackgroundColor", bg)
+        views.setInt(
+            R.id.item_accent,
+            "setColorFilter",
+            parseColor(accentHex, Color.parseColor("#FF3D5AFE")),
+        )
 
         // 传 courseId 给 template
         val fill = Intent().apply {
             putExtra("courseId", item.optString("id"))
+            data = Uri.parse("schedule://course?id=${Uri.encode(item.optString("id"))}")
         }
         views.setOnClickFillInIntent(R.id.item_root, fill)
         return views

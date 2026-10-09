@@ -62,3 +62,8 @@ schedule.zip
 /ios/.symlinks/
 /ios/Flutter/Flutter.framework/
 /ios/Flutter/Flutter.podspec
+
+# Release signing material
+/android/key.properties
+/android/app/*.jks
+/android/app/*.keystore

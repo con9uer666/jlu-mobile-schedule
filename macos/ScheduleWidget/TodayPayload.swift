@@ -10,6 +10,26 @@ struct TodayPayload: Decodable {
   let dateShort: String?
   let semesterName: String
   let courses: [CourseItem]
+  let tomorrowCourses: [CourseItem]
+
+  private enum CodingKeys: String, CodingKey { case updatedAt, weekLabel, dayLabel, dateShort, semesterName, courses, tomorrowCourses }
+
+  init(from decoder: Decoder) throws {
+    let c = try decoder.container(keyedBy: CodingKeys.self)
+    updatedAt = try c.decode(Int.self, forKey: .updatedAt)
+    weekLabel = try c.decode(String.self, forKey: .weekLabel)
+    dayLabel = try c.decode(String.self, forKey: .dayLabel)
+    dateShort = try c.decodeIfPresent(String.self, forKey: .dateShort)
+    semesterName = try c.decode(String.self, forKey: .semesterName)
+    courses = try c.decode([CourseItem].self, forKey: .courses)
+    tomorrowCourses = try c.decodeIfPresent([CourseItem].self, forKey: .tomorrowCourses) ?? []
+  }
+
+  init(updatedAt: Int, weekLabel: String, dayLabel: String, dateShort: String?, semesterName: String, courses: [CourseItem], tomorrowCourses: [CourseItem]) {
+    self.updatedAt = updatedAt; self.weekLabel = weekLabel; self.dayLabel = dayLabel
+    self.dateShort = dateShort; self.semesterName = semesterName; self.courses = courses
+    self.tomorrowCourses = tomorrowCourses
+  }
 
   static let empty = TodayPayload(
     updatedAt: 0,
@@ -17,7 +37,8 @@ struct TodayPayload: Decodable {
     dayLabel: "",
     dateShort: nil,
     semesterName: "",
-    courses: []
+    courses: [],
+    tomorrowCourses: []
   )
 
   /// 今日剩余课程:endTime(HH:mm)解析后 >= now 才留。

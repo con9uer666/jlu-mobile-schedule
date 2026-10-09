@@ -37,11 +37,13 @@ struct ScheduleHeader: View {
 // MARK: - Empty state
 
 struct ScheduleEmpty: View {
+  let title: String
+  let subtitle: String?
   var body: some View {
-    Text("今天没课")
-      .font(.system(size: 13))
-      .foregroundStyle(Color(.secondaryLabel))
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
+    VStack(alignment: .leading, spacing: 4) {
+      Text(title).font(.headline).foregroundStyle(Color(.label))
+      if let subtitle { Text(subtitle).font(.caption).foregroundStyle(Color(.secondaryLabel)) }
+    }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
   }
 }
 
@@ -165,7 +167,7 @@ struct SmallScheduleView: View {
       }
 
       if shown.isEmpty {
-        ScheduleEmpty()
+        ScheduleEmpty(title: "今天没课", subtitle: nil)
       } else {
         ForEach(Array(shown.enumerated()), id: \.element.id) { idx, c in
           if let url = courseDeepLink(c.id) {
@@ -185,7 +187,112 @@ struct SmallScheduleView: View {
   }
 }
 
-// MARK: - Medium (4x2) / Large (4x4)
+// MARK: - Medium (4x2)
+
+struct MediumScheduleView: View {
+  let entry: ScheduleEntry
+
+  var body: some View {
+    let courses = entry.payload.upcomingCourses(now: entry.date)
+    VStack(alignment: .leading, spacing: 7) {
+      ScheduleHeader(payload: entry.payload)
+      if let next = courses.first {
+        Group {
+          if let url = courseDeepLink(next.id) {
+            Link(destination: url) { nextCourseCard(next) }
+          } else {
+            nextCourseCard(next)
+          }
+        }
+        .buttonStyle(.plain)
+
+        let later = Array(courses.dropFirst())
+        if let course = later.first {
+          Group {
+            if let url = courseDeepLink(course.id) {
+              Link(destination: url) { laterCourseRow(course, remaining: later.count - 1) }
+            } else {
+              laterCourseRow(course, remaining: later.count - 1)
+            }
+          }
+          .buttonStyle(.plain)
+        }
+      } else {
+        Spacer(minLength: 0)
+        if let tomorrow = entry.payload.tomorrowCourses.first {
+          if let url = courseDeepLink(tomorrow.id) {
+            Link(destination: url) { ScheduleEmpty(title: "今天课程已结束", subtitle: "明天 · \(tomorrow.startTime ?? tomorrow.sectionLabel)  \(tomorrow.name)") }.buttonStyle(.plain)
+          } else {
+            ScheduleEmpty(title: "今天课程已结束", subtitle: "明天 · \(tomorrow.startTime ?? tomorrow.sectionLabel)  \(tomorrow.name)")
+          }
+        } else { ScheduleEmpty(title: "今天没课", subtitle: nil) }
+        Spacer(minLength: 0)
+      }
+    }
+    .padding(.horizontal, 14)
+    .padding(.vertical, 10)
+    .clipped()
+  }
+
+  private func nextCourseCard(_ course: CourseItem) -> some View {
+    VStack(alignment: .leading, spacing: 2) {
+      Text("下一节")
+        .font(.system(size: 11, weight: .semibold))
+        .foregroundStyle(course.accentColor)
+      Text(course.name)
+        .font(.system(size: 17, weight: .bold))
+        .foregroundStyle(Color(.label))
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+      HStack(spacing: 7) {
+        Text(course.startTime ?? course.sectionLabel)
+          .font(.system(size: 14, weight: .bold).monospacedDigit())
+          .foregroundStyle(Color(.label))
+          .fixedSize()
+        if !course.location.isEmpty {
+          Text(course.location)
+            .font(.system(size: 12))
+            .foregroundStyle(Color(.secondaryLabel))
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+        }
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(.horizontal, 10)
+    .padding(.vertical, 7)
+    .background(RoundedRectangle(cornerRadius: 13).fill(course.accentColor.opacity(0.14)))
+  }
+
+  private func laterCourseRow(_ course: CourseItem, remaining: Int) -> some View {
+    HStack(spacing: 7) {
+      Text(course.startTime ?? course.sectionLabel)
+        .font(.system(size: 12, weight: .semibold).monospacedDigit())
+        .foregroundStyle(Color(.secondaryLabel))
+        .frame(width: 42, alignment: .leading)
+      Text(course.name)
+        .font(.system(size: 12, weight: .semibold))
+        .foregroundStyle(Color(.label))
+        .lineLimit(1)
+      Spacer(minLength: 4)
+      if remaining > 0 {
+        Text("另有 \(remaining) 节")
+          .font(.system(size: 10, weight: .medium))
+          .foregroundStyle(Color(.secondaryLabel))
+          .fixedSize()
+      } else if !course.location.isEmpty {
+        Text(course.location)
+          .font(.system(size: 10))
+          .foregroundStyle(Color(.secondaryLabel))
+          .lineLimit(1)
+      }
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.horizontal, 2)
+  }
+}
+
+// MARK: - Large (4x4)
 
 struct ListScheduleView: View {
   let entry: ScheduleEntry
@@ -198,7 +305,7 @@ struct ListScheduleView: View {
       ScheduleHeader(payload: entry.payload)
       if shown.isEmpty {
         Spacer(minLength: 0)
-        ScheduleEmpty()
+        ScheduleEmpty(title: "今天没课", subtitle: nil)
         Spacer(minLength: 0)
       } else {
         Spacer(minLength: 6)

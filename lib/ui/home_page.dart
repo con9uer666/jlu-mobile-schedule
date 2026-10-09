@@ -78,13 +78,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     _pushedInitialSetup = false;
 
     final realWeek = semester.currentWeek(DateTime.now());
-    _ensureController(semester.totalWeeks, realWeek.clamp(1, semester.totalWeeks));
+    _ensureController(
+      semester.totalWeeks,
+      realWeek.clamp(1, semester.totalWeeks),
+    );
     final shownWeek = _displayedWeek ?? realWeek;
     final today = DateTime.now();
-
     return CupertinoPageScaffold(
-      backgroundColor:
-          CupertinoColors.systemBackground.resolveFrom(context),
+      backgroundColor: CupertinoColors.systemBackground.resolveFrom(context),
       child: SafeArea(
         bottom: false,
         child: Stack(
@@ -100,7 +101,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   return PageView.builder(
                     controller: _pageController,
                     itemCount: semester.totalWeeks,
-                    onPageChanged: (i) => setState(() => _displayedWeek = i + 1),
+                    onPageChanged: (i) =>
+                        setState(() => _displayedWeek = i + 1),
                     itemBuilder: (_, i) => RepaintBoundary(
                       child: _WeekGrid(
                         courses: courses,
@@ -112,7 +114,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ),
                   );
                 },
-                loading: () => const Center(child: CupertinoActivityIndicator()),
+                loading: () =>
+                    const Center(child: CupertinoActivityIndicator()),
                 error: (e, _) => Center(child: Text('$e')),
               ),
             ),
@@ -131,9 +134,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                 onAdd: () => Navigator.of(context).push(
                   CupertinoPageRoute(builder: (_) => const CourseEditorPage()),
                 ),
-                onImport: () => Navigator.of(context).push(
-                  CupertinoPageRoute(builder: (_) => const ImportPage()),
-                ),
+                onImport: () => Navigator.of(
+                  context,
+                ).push(CupertinoPageRoute(builder: (_) => const ImportPage())),
                 onSettings: () => Navigator.of(context).push(
                   CupertinoPageRoute(builder: (_) => const SettingsPage()),
                 ),
@@ -238,8 +241,7 @@ class _TopBar extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color:
-                                  CupertinoColors.label.resolveFrom(context),
+                              color: CupertinoColors.label.resolveFrom(context),
                             ),
                           ),
                           if (!isCurrent) ...[
@@ -248,7 +250,9 @@ class _TopBar extends StatelessWidget {
                               CupertinoIcons.arrow_uturn_left_circle_fill,
                               size: 16,
                               color: CupertinoDynamicColor.resolve(
-                                  accent, context),
+                                accent,
+                                context,
+                              ),
                             ),
                           ],
                         ],
@@ -258,8 +262,9 @@ class _TopBar extends StatelessWidget {
                         _subtitle(),
                         style: TextStyle(
                           fontSize: 11,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context),
+                          color: CupertinoColors.secondaryLabel.resolveFrom(
+                            context,
+                          ),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -353,10 +358,13 @@ class _WeekGridState extends State<_WeekGrid> {
       widget.courses,
       widget.overrides,
       widget.week,
-      weekStart: widget.semester.startDate.add(Duration(days: (widget.week - 1) * 7)),
+      weekStart: widget.semester.startDate.add(
+        Duration(days: (widget.week - 1) * 7),
+      ),
     );
-    final weekStart = widget.semester.startDate
-        .add(Duration(days: (widget.week - 1) * 7));
+    final weekStart = widget.semester.startDate.add(
+      Duration(days: (widget.week - 1) * 7),
+    );
     final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
     final today = DateTime.now();
 
@@ -375,8 +383,7 @@ class _WeekGridState extends State<_WeekGrid> {
             ? currentStatus(widget.semester, DateTime.now()).section
             : null;
         final accent = CupertinoTheme.of(context).primaryColor;
-        final accentResolved =
-            CupertinoDynamicColor.resolve(accent, context);
+        final accentResolved = CupertinoDynamicColor.resolve(accent, context);
 
         return Column(
           children: [
@@ -425,11 +432,14 @@ class _WeekGridState extends State<_WeekGrid> {
                                     Expanded(
                                       child: AnimatedContainer(
                                         duration: const Duration(
-                                            milliseconds: 250),
-                                        color: (widget.isCurrentWeek &&
+                                          milliseconds: 250,
+                                        ),
+                                        color:
+                                            (widget.isCurrentWeek &&
                                                 _sameDay(days[i], today))
-                                            ? accentResolved
-                                                .withValues(alpha: 0.14)
+                                            ? accentResolved.withValues(
+                                                alpha: 0.14,
+                                              )
                                             : const Color(0x00000000),
                                       ),
                                     ),
@@ -462,15 +472,27 @@ class _WeekGridState extends State<_WeekGrid> {
                                   ),
                                 );
                               },
-                              onStart: (dayIdx, sec) => setState(() => _drag =
-                                  (dayIdx: dayIdx, startSec: sec, endSec: sec)),
+                              onStart: (dayIdx, sec) => setState(
+                                () => _drag = (
+                                  dayIdx: dayIdx,
+                                  startSec: sec,
+                                  endSec: sec,
+                                ),
+                              ),
                               onUpdate: (sec) {
                                 if (_drag == null) return;
                                 final s = _drag!.startSec;
                                 final e = sec.clamp(
-                                    1, widget.semester.sectionCount);
-                                setState(() => _drag =
-                                    (dayIdx: _drag!.dayIdx, startSec: s, endSec: e));
+                                  1,
+                                  widget.semester.sectionCount,
+                                );
+                                setState(
+                                  () => _drag = (
+                                    dayIdx: _drag!.dayIdx,
+                                    startSec: s,
+                                    endSec: e,
+                                  ),
+                                );
                               },
                               onEnd: () {
                                 final d = _drag;
@@ -502,7 +524,8 @@ class _WeekGridState extends State<_WeekGrid> {
                                 left: dayWidth * (ec.dayOfWeek - 1),
                                 top: sectionHeight * (ec.startSection - 1),
                                 width: dayWidth,
-                                height: sectionHeight *
+                                height:
+                                    sectionHeight *
                                     (ec.endSection - ec.startSection + 1),
                                 child: _CourseBlock(
                                   effective: ec,
@@ -623,11 +646,12 @@ class _GridBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lineColor =
-        CupertinoColors.separator.resolveFrom(context).withValues(alpha: 0.3);
-    final highlightColor = CupertinoTheme.of(context)
-        .primaryColor
-        .withValues(alpha: 0.10);
+    final lineColor = CupertinoColors.separator
+        .resolveFrom(context)
+        .withValues(alpha: 0.3);
+    final highlightColor = CupertinoTheme.of(
+      context,
+    ).primaryColor.withValues(alpha: 0.10);
     return CustomPaint(
       size: Size.infinite,
       painter: _GridPainter(
@@ -875,21 +899,23 @@ class _DragSelectionOverlay extends StatelessWidget {
                 children: [
                   Positioned(
                     left: dayWidth * drag!.dayIdx + 2,
-                    top: sectionHeight *
+                    top:
+                        sectionHeight *
                             ((drag!.startSec < drag!.endSec
                                     ? drag!.startSec
                                     : drag!.endSec) -
                                 1) +
                         2,
                     width: dayWidth - 4,
-                    height: sectionHeight *
+                    height:
+                        sectionHeight *
                             ((drag!.startSec - drag!.endSec).abs() + 1) -
                         4,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: CupertinoTheme.of(context)
-                            .primaryColor
-                            .withValues(alpha: 0.2),
+                        color: CupertinoTheme.of(
+                          context,
+                        ).primaryColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: CupertinoTheme.of(context).primaryColor,
@@ -917,20 +943,15 @@ class _CourseBlock extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(2),
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Stack(
+          fit: StackFit.expand,
           children: [
             DecoratedBox(
               decoration: BoxDecoration(
-                color: accent,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: accent.withValues(alpha: 0.25),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                color: accent.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(6, 6, 4, 4),

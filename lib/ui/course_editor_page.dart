@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/course.dart';
+import '../data/course_id.dart';
 import '../data/storage.dart';
 import '../state/schedule_providers.dart';
 import 'course_colors.dart';
@@ -28,6 +29,8 @@ class _CourseEditorPageState extends ConsumerState<CourseEditorPage> {
   late int _endSection;
   late List<int> _weeks;
   late int _colorIndex;
+  bool _saving = false;
+  String? _error;
 
   @override
   void initState() {
@@ -55,20 +58,43 @@ class _CourseEditorPageState extends ConsumerState<CourseEditorPage> {
   }
 
   Future<void> _save() async {
-    if (_nameCtrl.text.trim().isEmpty) return;
-    final course = Course(
-      id: widget.existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      name: _nameCtrl.text.trim(),
-      teacher: _teacherCtrl.text.trim(),
-      location: _locationCtrl.text.trim(),
-      dayOfWeek: _dayOfWeek,
-      startSection: _startSection,
-      endSection: _endSection,
-      weeks: _weeks,
-      colorIndex: _colorIndex,
-    );
-    await AppStorage.courses.put(course.id, course);
-    if (mounted) Navigator.of(context).pop();
+    final name = _nameCtrl.text.trim();
+    final semester = ref.read(currentSemesterProvider);
+    if (name.isEmpty) {
+      setState(() => _error = '请输入课程名称');
+      return;
+    }
+    if (semester == null) {
+      setState(() => _error = '请先设置当前学期');
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final id = widget.existing?.id ?? manualCourseId(semester.id);
+      final course = Course(
+        id: id,
+        name: name,
+        teacher: _teacherCtrl.text.trim(),
+        location: _locationCtrl.text.trim(),
+        dayOfWeek: _dayOfWeek,
+        startSection: _startSection,
+        endSection: _endSection,
+        weeks: List<int>.from(_weeks),
+        colorIndex: _colorIndex,
+      );
+      await AppStorage.courses.put(course.id, course);
+      if (mounted) Navigator.of(context).pop();
+    } catch (error) {
+      if (mounted) {
+        setState(() => _error = '保存失败：$error');
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Future<void> _delete() async {
@@ -89,8 +115,10 @@ class _CourseEditorPageState extends ConsumerState<CourseEditorPage> {
         middle: Text(widget.existing == null ? '新建课程' : '编辑课程'),
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
-          onPressed: _save,
-          child: const Text('保存'),
+          onPressed: _saving ? null : _save,
+          child: _saving
+              ? const CupertinoActivityIndicator(radius: 8)
+              : const Text('保存'),
         ),
       ),
       child: SafeArea(
@@ -103,6 +131,9 @@ class _CourseEditorPageState extends ConsumerState<CourseEditorPage> {
                   prefix: const Text('名称'),
                   placeholder: '课程名',
                   controller: _nameCtrl,
+                  onChanged: (_) {
+                    if (_error != null) setState(() => _error = null);
+                  },
                 ),
                 CupertinoTextFormFieldRow(
                   prefix: const Text('教师'),
@@ -116,6 +147,17 @@ class _CourseEditorPageState extends ConsumerState<CourseEditorPage> {
                 ),
               ],
             ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(
+                    color: CupertinoColors.systemRed,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
             CupertinoFormSection.insetGrouped(
               header: const Text('时间'),
               children: [
@@ -228,7 +270,11 @@ class _CourseEditorPageState extends ConsumerState<CourseEditorPage> {
     );
   }
 
-  Widget _pickerRow({required String label, required String value, required VoidCallback onTap}) {
+  Widget _pickerRow({
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+  }) {
     return CupertinoFormRow(
       prefix: Text(label),
       child: CupertinoButton(
@@ -280,7 +326,9 @@ class _CourseEditorPageState extends ConsumerState<CourseEditorPage> {
           scrollController: FixedExtentScrollController(initialItem: initial),
           itemExtent: 36,
           onSelectedItemChanged: onChanged,
-          children: [for (var i = 0; i < itemCount; i++) Center(child: Text(builder(i)))],
+          children: [
+            for (var i = 0; i < itemCount; i++) Center(child: Text(builder(i))),
+          ],
         ),
       ),
     );

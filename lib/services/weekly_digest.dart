@@ -29,6 +29,14 @@ class WeeklyDigest {
       body,
       fireTz,
       const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'schedule_digest',
+          '每周预报',
+          channelDescription: '每周课程和日程预报',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          icon: 'ic_notification',
+        ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
@@ -43,7 +51,7 @@ class WeeklyDigest {
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       payload: 'schedule://agenda',
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
     );
   }
 
@@ -63,11 +71,7 @@ class WeeklyDigest {
     return candidate;
   }
 
-  static String _generateBody(
-    DateTime now,
-    DateTime target,
-    dynamic semester,
-  ) {
+  static String _generateBody(DateTime now, DateTime target, dynamic semester) {
     // target = 周日 21:00,下周从 target 之后开始
     final nextMonday = target.add(const Duration(days: 1));
     final nextSunday = nextMonday.add(const Duration(days: 7));
@@ -75,7 +79,11 @@ class WeeklyDigest {
     // 课程数
     int courseCount = 0;
     if (semester != null) {
-      final courses = AppStorage.courses.values.toList();
+      // Course storage is shared by all semesters; the digest follows the
+      // same current-semester boundary as the course notifications.
+      final courses = AppStorage.courses.values
+          .where((course) => course.id.startsWith('${semester.id}-'))
+          .toList();
       for (int offset = 0; offset < 7; offset++) {
         final day = nextMonday.add(Duration(days: offset));
         final week = semester.currentWeek(day);

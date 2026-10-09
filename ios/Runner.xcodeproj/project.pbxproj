@@ -7,19 +7,34 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0A4F7C700A328DAF47B42B3A /* ScheduleWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDBA82C5894778064C87E1C9 /* ScheduleWatchApp.swift */; };
+		1053F6A66F48C7006EAC8B06 /* ScheduleWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = BF38A70C8B0AE10F42DCC807 /* ScheduleWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		4F2E7FA4EA4242B6165E7D5F /* WatchConnectivityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D432A8FF1F454F398478F918 /* WatchConnectivityStore.swift */; };
 		512312772FB2F979000E2A76 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 512312762FB2F979000E2A76 /* WidgetKit.framework */; };
 		512312792FB2F979000E2A76 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 512312782FB2F979000E2A76 /* SwiftUI.framework */; };
 		5123128A2FB2F97A000E2A76 /* ScheduleWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 512312752FB2F979000E2A76 /* ScheduleWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		55DFE2A0268F0875B3A4D3CD /* WatchSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFD301B02068074E4CAF36FB /* WatchSchedule.swift */; };
+		57C83007EE3A98FBF3B7E32F /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9286246BE9EE2D399086303F /* Foundation.framework */; };
+		67C06533707E7095858EF640 /* WatchScheduleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04E44A4F6258117371BB7326 /* WatchScheduleStore.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		8E082D70A316F452E3B9F983 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2030B0D33496EBAD03B56CF8 /* Pods_Runner.framework */; };
+		90A69A401A1A4007531393A2 /* ScheduleWatchWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 77929B0D554DB8CC15C9A7C3 /* ScheduleWatchWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		A47A9F494970CA1FE1AB27A3 /* WatchSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFD301B02068074E4CAF36FB /* WatchSchedule.swift */; };
+		B736D8B88B82880BD3B1F366 /* PhoneWatchBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03102E2F05A1F34EFBBDAE28 /* PhoneWatchBridge.swift */; };
 		BF2AA0CE2EF419FFC0C68526 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D2E1B7FC74F420FF0B90368 /* Pods_RunnerTests.framework */; };
+		CF8D73786A750C4AB64E3EB0 /* WatchScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 942E8E6BB068501DB774FB27 /* WatchScheduleView.swift */; };
+		DBDA1AD13982888FFB8894A9 /* WatchSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFD301B02068074E4CAF36FB /* WatchSchedule.swift */; };
+		DCFBA8B3BA481752F180E200 /* NextCourseWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD2D4F4ED975FA928A9CE22C /* NextCourseWidget.swift */; };
+		E74118C6BAF1DF3CE7CF784A /* WatchScheduleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04E44A4F6258117371BB7326 /* WatchScheduleStore.swift */; };
+		EAA8A5650F282CD9126EBE6C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CF89A73E5A292C1A6A8397EC /* Assets.xcassets */; };
+		F8ED998518474900F3D97912 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9286246BE9EE2D399086303F /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -37,9 +52,34 @@
 			remoteGlobalIDString = 512312742FB2F979000E2A76;
 			remoteInfo = ScheduleWidgetExtension;
 		};
+		A8FCC2B71F33C40A3F1AD17D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E0A6900F0014449731567FB6;
+			remoteInfo = ScheduleWatch;
+		};
+		BE660F38841093B830B23EC5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A56C6DE551E67B6B3B3881AB;
+			remoteInfo = ScheduleWatchWidget;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		2DCA7BDE6500DE155137C17B /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				90A69A401A1A4007531393A2 /* ScheduleWatchWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5123128B2FB2F97A000E2A76 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -61,9 +101,22 @@
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CE9F45372B4E2ED08912BDAA /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				1053F6A66F48C7006EAC8B06 /* ScheduleWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		03102E2F05A1F34EFBBDAE28 /* PhoneWatchBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PhoneWatchBridge.swift; sourceTree = "<group>"; };
+		04E44A4F6258117371BB7326 /* WatchScheduleStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchScheduleStore.swift; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		2030B0D33496EBAD03B56CF8 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -79,10 +132,14 @@
 		512312982FB2FA57000E2A76 /* ScheduleWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ScheduleWidgetExtension.entitlements; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		77929B0D554DB8CC15C9A7C3 /* ScheduleWatchWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ScheduleWatchWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
 		7C709ACF3E11CE264A61563F /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
+		81B26931978634D835DE6E26 /* ScheduleWatchWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = ScheduleWatchWidget.entitlements; sourceTree = "<group>"; };
 		89AA913B1A232842F5FF1B66 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
+		9286246BE9EE2D399086303F /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		942E8E6BB068501DB774FB27 /* WatchScheduleView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchScheduleView.swift; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
 		97C146EE1CF9000F007C117D /* Runner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Runner.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -91,8 +148,17 @@
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9DDA95624F9EBB083DD233EB /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
+		A20C2FC304839A934333539D /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		ACCF9EEE2A5BE0A93AE2891E /* ScheduleWatch.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = ScheduleWatch.entitlements; sourceTree = "<group>"; };
 		AFA00046C31744FBFD3B4CF8 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
+		BDBA82C5894778064C87E1C9 /* ScheduleWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScheduleWatchApp.swift; sourceTree = "<group>"; };
+		BF38A70C8B0AE10F42DCC807 /* ScheduleWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ScheduleWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CF89A73E5A292C1A6A8397EC /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D432A8FF1F454F398478F918 /* WatchConnectivityStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchConnectivityStore.swift; sourceTree = "<group>"; };
+		DD2D4F4ED975FA928A9CE22C /* NextCourseWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextCourseWidget.swift; sourceTree = "<group>"; };
+		EFD301B02068074E4CAF36FB /* WatchSchedule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSchedule.swift; sourceTree = "<group>"; };
 		F7CFE8B69BD558D35D62B5A0 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
+		FF6AEF2F7F349C4296711641 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -126,6 +192,22 @@
 			buildActionMask = 2147483647;
 			files = (
 				BF2AA0CE2EF419FFC0C68526 /* Pods_RunnerTests.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4B0FBF8FE6A864FEF83138AA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				57C83007EE3A98FBF3B7E32F /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		50DFE53DD30AFA5BCB62C5A5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F8ED998518474900F3D97912 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -170,6 +252,14 @@
 			path = RunnerTests;
 			sourceTree = "<group>";
 		};
+		68D6CB8EE40F341B7B3EDE3F /* watchOS */ = {
+			isa = PBXGroup;
+			children = (
+				9286246BE9EE2D399086303F /* Foundation.framework */,
+			);
+			name = watchOS;
+			sourceTree = "<group>";
+		};
 		9740EEB11CF90186004384FC /* Flutter */ = {
 			isa = PBXGroup;
 			children = (
@@ -179,6 +269,16 @@
 				9740EEB31CF90195004384FC /* Generated.xcconfig */,
 			);
 			name = Flutter;
+			sourceTree = "<group>";
+		};
+		976D0ACEA10F2AE6A9336951 /* WatchShared */ = {
+			isa = PBXGroup;
+			children = (
+				EFD301B02068074E4CAF36FB /* WatchSchedule.swift */,
+				04E44A4F6258117371BB7326 /* WatchScheduleStore.swift */,
+			);
+			name = WatchShared;
+			path = WatchShared;
 			sourceTree = "<group>";
 		};
 		97C146E51CF9000F007C117D = {
@@ -192,6 +292,9 @@
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				324EBFD4943262FFC6BDF8BB /* Pods */,
 				B411E2B5510D8B3C35B41D0A /* Frameworks */,
+				976D0ACEA10F2AE6A9336951 /* WatchShared */,
+				F4F20ACDBB0B54D0F96668FB /* ScheduleWatch */,
+				AFBD336167BB78923D3D7813 /* ScheduleWatchWidget */,
 			);
 			sourceTree = "<group>";
 		};
@@ -201,6 +304,8 @@
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
 				512312752FB2F979000E2A76 /* ScheduleWidgetExtension.appex */,
+				BF38A70C8B0AE10F42DCC807 /* ScheduleWatch.app */,
+				77929B0D554DB8CC15C9A7C3 /* ScheduleWatchWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -218,8 +323,20 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
+				03102E2F05A1F34EFBBDAE28 /* PhoneWatchBridge.swift */,
 			);
 			path = Runner;
+			sourceTree = "<group>";
+		};
+		AFBD336167BB78923D3D7813 /* ScheduleWatchWidget */ = {
+			isa = PBXGroup;
+			children = (
+				DD2D4F4ED975FA928A9CE22C /* NextCourseWidget.swift */,
+				A20C2FC304839A934333539D /* Info.plist */,
+				81B26931978634D835DE6E26 /* ScheduleWatchWidget.entitlements */,
+			);
+			name = ScheduleWatchWidget;
+			path = ScheduleWatchWidget;
 			sourceTree = "<group>";
 		};
 		B411E2B5510D8B3C35B41D0A /* Frameworks */ = {
@@ -229,8 +346,23 @@
 				4D2E1B7FC74F420FF0B90368 /* Pods_RunnerTests.framework */,
 				512312762FB2F979000E2A76 /* WidgetKit.framework */,
 				512312782FB2F979000E2A76 /* SwiftUI.framework */,
+				68D6CB8EE40F341B7B3EDE3F /* watchOS */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		F4F20ACDBB0B54D0F96668FB /* ScheduleWatch */ = {
+			isa = PBXGroup;
+			children = (
+				BDBA82C5894778064C87E1C9 /* ScheduleWatchApp.swift */,
+				D432A8FF1F454F398478F918 /* WatchConnectivityStore.swift */,
+				942E8E6BB068501DB774FB27 /* WatchScheduleView.swift */,
+				FF6AEF2F7F349C4296711641 /* Info.plist */,
+				ACCF9EEE2A5BE0A93AE2891E /* ScheduleWatch.entitlements */,
+				CF89A73E5A292C1A6A8397EC /* Assets.xcassets */,
+			);
+			name = ScheduleWatch;
+			path = ScheduleWatch;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -287,16 +419,54 @@
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				5123128B2FB2F97A000E2A76 /* Embed Foundation Extensions */,
 				36C9284F783947C8BA5B7571 /* [CP] Embed Pods Frameworks */,
+				CE9F45372B4E2ED08912BDAA /* Embed Watch Content */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				512312892FB2F97A000E2A76 /* PBXTargetDependency */,
+				440C017E47AEE3EEB11617C9 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			productName = Runner;
 			productReference = 97C146EE1CF9000F007C117D /* Runner.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A56C6DE551E67B6B3B3881AB /* ScheduleWatchWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 009687AD29400884AE0BD365 /* Build configuration list for PBXNativeTarget "ScheduleWatchWidget" */;
+			buildPhases = (
+				0F777ED20891F77C65804B06 /* Sources */,
+				50DFE53DD30AFA5BCB62C5A5 /* Frameworks */,
+				26C22A33F2F3A654243B10E3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ScheduleWatchWidget;
+			productName = ScheduleWatchWidget;
+			productReference = 77929B0D554DB8CC15C9A7C3 /* ScheduleWatchWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		E0A6900F0014449731567FB6 /* ScheduleWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FBB0907CBC2F94F03A169F96 /* Build configuration list for PBXNativeTarget "ScheduleWatch" */;
+			buildPhases = (
+				B0BA78D20B5672348C4E1443 /* Sources */,
+				4B0FBF8FE6A864FEF83138AA /* Frameworks */,
+				58D094DB01E80FBC748C95FE /* Resources */,
+				2DCA7BDE6500DE155137C17B /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8F99EA161904587477D84AF1 /* PBXTargetDependency */,
+			);
+			name = ScheduleWatch;
+			productName = ScheduleWatch;
+			productReference = BF38A70C8B0AE10F42DCC807 /* ScheduleWatch.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -321,6 +491,24 @@
 						CreatedOnToolsVersion = 7.3.1;
 						LastSwiftMigration = 1100;
 					};
+					A56C6DE551E67B6B3B3881AB = {
+						CreatedOnToolsVersion = 26.5;
+						DevelopmentTeam = 8S5JGP6QTR;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
+					};
+					E0A6900F0014449731567FB6 = {
+						CreatedOnToolsVersion = 26.5;
+						DevelopmentTeam = 8S5JGP6QTR;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
+					};
 				};
 			};
 			buildConfigurationList = 97C146E91CF9000F007C117D /* Build configuration list for PBXProject "Runner" */;
@@ -339,11 +527,20 @@
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
 				512312742FB2F979000E2A76 /* ScheduleWidgetExtension */,
+				E0A6900F0014449731567FB6 /* ScheduleWatch */,
+				A56C6DE551E67B6B3B3881AB /* ScheduleWatchWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		26C22A33F2F3A654243B10E3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		331C807F294A63A400263BE5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -355,6 +552,14 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		58D094DB01E80FBC748C95FE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EAA8A5650F282CD9126EBE6C /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -467,6 +672,16 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		0F777ED20891F77C65804B06 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DCFBA8B3BA481752F180E200 /* NextCourseWidget.swift in Sources */,
+				DBDA1AD13982888FFB8894A9 /* WatchSchedule.swift in Sources */,
+				67C06533707E7095858EF640 /* WatchScheduleStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		331C807D294A63A400263BE5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -489,6 +704,20 @@
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
+				A47A9F494970CA1FE1AB27A3 /* WatchSchedule.swift in Sources */,
+				B736D8B88B82880BD3B1F366 /* PhoneWatchBridge.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B0BA78D20B5672348C4E1443 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0A4F7C700A328DAF47B42B3A /* ScheduleWatchApp.swift in Sources */,
+				4F2E7FA4EA4242B6165E7D5F /* WatchConnectivityStore.swift in Sources */,
+				CF8D73786A750C4AB64E3EB0 /* WatchScheduleView.swift in Sources */,
+				55DFE2A0268F0875B3A4D3CD /* WatchSchedule.swift in Sources */,
+				E74118C6BAF1DF3CE7CF784A /* WatchScheduleStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -500,10 +729,22 @@
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
 		};
+		440C017E47AEE3EEB11617C9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ScheduleWatch;
+			target = E0A6900F0014449731567FB6 /* ScheduleWatch */;
+			targetProxy = A8FCC2B71F33C40A3F1AD17D /* PBXContainerItemProxy */;
+		};
 		512312892FB2F97A000E2A76 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 512312742FB2F979000E2A76 /* ScheduleWidgetExtension */;
 			targetProxy = 512312882FB2F97A000E2A76 /* PBXContainerItemProxy */;
+		};
+		8F99EA161904587477D84AF1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ScheduleWatchWidget;
+			target = A56C6DE551E67B6B3B3881AB /* ScheduleWatchWidget */;
+			targetProxy = BE660F38841093B830B23EC5 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -608,9 +849,9 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jlu.schedule.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
@@ -626,9 +867,9 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jlu.schedule.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -642,15 +883,48 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jlu.schedule.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
 			};
 			name = Profile;
+		};
+		4C11ACF27F90D17323B5372C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = ScheduleWatch/ScheduleWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 8S5JGP6QTR;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ScheduleWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "吉林大学手机课表";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.jlu.schedule;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jlu.schedule.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Release;
 		};
 		5123128C2FB2F97A000E2A76 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -673,7 +947,7 @@
 				INFOPLIST_FILE = ScheduleWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ScheduleWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -718,7 +992,7 @@
 				INFOPLIST_FILE = ScheduleWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ScheduleWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -760,7 +1034,7 @@
 				INFOPLIST_FILE = ScheduleWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ScheduleWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -780,6 +1054,68 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Profile;
+		};
+		6A923977B64D9689B3964C94 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = ScheduleWatch/ScheduleWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 8S5JGP6QTR;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ScheduleWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "吉林大学手机课表";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.jlu.schedule;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jlu.schedule.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Debug;
+		};
+		80656D7C0C103146372CF2FC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ScheduleWatchWidget/ScheduleWatchWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 8S5JGP6QTR;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ScheduleWatchWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "吉林大学手机课表";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jlu.schedule.watchkitapp.complications;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Debug;
 		};
 		97C147031CF9000F007C117D /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -939,9 +1275,114 @@
 			};
 			name = Release;
 		};
+		D4F10E1BAA51CCC910E6C469 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ScheduleWatchWidget/ScheduleWatchWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 8S5JGP6QTR;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ScheduleWatchWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "吉林大学手机课表";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jlu.schedule.watchkitapp.complications;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Profile;
+		};
+		EFAAE570733EB7AAD87821C0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ScheduleWatchWidget/ScheduleWatchWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 8S5JGP6QTR;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ScheduleWatchWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "吉林大学手机课表";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jlu.schedule.watchkitapp.complications;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Release;
+		};
+		F6A0F667A49C545AEF51284B /* Profile */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = ScheduleWatch/ScheduleWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 8S5JGP6QTR;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ScheduleWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "吉林大学手机课表";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.jlu.schedule;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jlu.schedule.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Profile;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		009687AD29400884AE0BD365 /* Build configuration list for PBXNativeTarget "ScheduleWatchWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EFAAE570733EB7AAD87821C0 /* Release */,
+				80656D7C0C103146372CF2FC /* Debug */,
+				D4F10E1BAA51CCC910E6C469 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		331C8087294A63A400263BE5 /* Build configuration list for PBXNativeTarget "RunnerTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -978,6 +1419,16 @@
 				97C147061CF9000F007C117D /* Debug */,
 				97C147071CF9000F007C117D /* Release */,
 				249021D4217E4FDB00AE95B9 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FBB0907CBC2F94F03A169F96 /* Build configuration list for PBXNativeTarget "ScheduleWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C11ACF27F90D17323B5372C /* Release */,
+				6A923977B64D9689B3964C94 /* Debug */,
+				F6A0F667A49C545AEF51284B /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

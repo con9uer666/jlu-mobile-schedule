@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>课程表</string>
+	<string>吉林大学手机课表</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -83,6 +83,10 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>用于通过语音快速添加作业、考试和个人待办。</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>用于将你的语音转换为作业、考试和个人待办文字。</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

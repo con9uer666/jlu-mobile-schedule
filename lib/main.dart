@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -81,6 +83,7 @@ class _ScheduleAppState extends ConsumerState<ScheduleApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ref.read(notificationSyncProvider);
+      unawaited(ref.read(widgetSyncProvider).refresh());
     }
   }
 
@@ -90,12 +93,27 @@ class _ScheduleAppState extends ConsumerState<ScheduleApp>
     ref.watch(notificationSyncProvider);
     final appearance = ref.watch(appearanceProvider);
     return CupertinoApp(
-      title: '课程表',
+      title: '吉林大学手机课表',
       debugShowCheckedModeBanner: false,
       navigatorKey: rootNavigatorKey,
       theme: CupertinoThemeData(
         brightness: appearance.explicitBrightness,
         primaryColor: appearance.accent,
+        scaffoldBackgroundColor: CupertinoColors.systemGroupedBackground,
+        barBackgroundColor: CupertinoColors.systemBackground.withValues(
+          alpha: 0.82,
+        ),
+        textTheme: const CupertinoTextThemeData(
+          navLargeTitleTextStyle: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.7,
+          ),
+          navTitleTextStyle: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
       localizationsDelegates: const [
         DefaultMaterialLocalizations.delegate,

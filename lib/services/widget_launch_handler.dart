@@ -12,15 +12,17 @@ class WidgetLaunchHandler {
   static Future<void> attach() async {
     _channel.setMethodCallHandler((call) async {
       switch (call.method) {
+        case 'onDeepLink':
+          _handle(Uri.tryParse(call.arguments as String? ?? ''));
         case 'onCourseTap':
           final id = call.arguments as String?;
           if (id != null && id.isNotEmpty) {
-            DeepLinkRouter.handle(Uri.parse('schedule://course?id=$id'));
+            _handle(Uri.parse('schedule://course?id=$id'));
           }
         case 'onEventTap':
           final id = call.arguments as String?;
           if (id != null && id.isNotEmpty) {
-            DeepLinkRouter.handle(Uri.parse('schedule://event?id=$id'));
+            _handle(Uri.parse('schedule://event?id=$id'));
           }
       }
     });
@@ -29,15 +31,29 @@ class WidgetLaunchHandler {
 
   static Future<void> _drainInitial() async {
     try {
-      final id =
-          await _channel.invokeMethod<String>('consumeInitialCourseId');
-      if (id != null && id.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          DeepLinkRouter.handle(Uri.parse('schedule://course?id=$id'));
-        });
-      }
+      final raw = await _channel.invokeMethod<String>('consumeInitialDeepLink');
+      if (raw != null && raw.isNotEmpty) _schedule(Uri.tryParse(raw));
     } on MissingPluginException {
-      // iOS debug 或插件未注册时忽略
+      try {
+        final id = await _channel.invokeMethod<String>('consumeInitialCourseId');
+        if (id != null && id.isNotEmpty) {
+          _schedule(Uri.parse('schedule://course?id=$id'));
+        }
+      } on MissingPluginException {
+        // 原生侧未注册时忽略
+      }
     }
+  }
+
+  static void _handle(Uri? uri) {
+    if (uri == null) return;
+    _schedule(uri);
+  }
+
+  static void _schedule(Uri? uri) {
+    if (uri == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      DeepLinkRouter.handle(uri);
+    });
   }
 }
