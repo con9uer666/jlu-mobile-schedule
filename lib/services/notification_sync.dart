@@ -45,6 +45,7 @@ class NotificationSync {
   }
 
   Future<void> _run() async {
+    if (!NotificationService.isInitialized) return;
     final events = AppStorage.events.values.toList();
     final semester = _ref.read(currentSemesterProvider);
     // Hive 保留所有历史学期的课程。通知和课表页面必须使用同一套

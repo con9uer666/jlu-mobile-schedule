@@ -27,6 +27,8 @@ class NotificationService {
   static AndroidScheduleMode _androidScheduleMode =
       AndroidScheduleMode.exactAllowWhileIdle;
 
+  static bool get isInitialized => _initialized;
+
   /// 在 main() 中尽早调用。串行,无网络。
   static Future<void> init({DeepLinkHandler? onDeepLink}) async {
     _deepLinkHandler = onDeepLink;
@@ -44,15 +46,22 @@ class NotificationService {
       requestSoundPermission: false,
     );
     const androidInit = AndroidInitializationSettings('ic_notification');
-    await _plugin.initialize(
-      const InitializationSettings(
-        android: androidInit,
-        iOS: darwinInit,
-        macOS: darwinInit,
-      ),
-      onDidReceiveNotificationResponse: _onTap,
-    );
-    _initialized = true;
+    try {
+      await _plugin.initialize(
+        const InitializationSettings(
+          android: androidInit,
+          iOS: darwinInit,
+          macOS: darwinInit,
+        ),
+        onDidReceiveNotificationResponse: _onTap,
+      );
+      _initialized = true;
+    } catch (error, stackTrace) {
+      // Notification setup must never prevent the schedule UI from opening.
+      // This also keeps older installs usable if a platform resource is missing.
+      debugPrint('Notification initialization failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
 
   static Future<bool> requestPermissions() async {
@@ -453,6 +462,11 @@ class NotificationRescheduler {
     final version = _requestVersion;
     try {
       await run();
+    } catch (error, stackTrace) {
+      // A notification plugin failure must not become an unhandled async
+      // exception or prevent the rest of the app from being usable.
+      debugPrint('Notification reschedule failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
     } finally {
       _running = false;
       // A change arrived while the previous native notification operation was

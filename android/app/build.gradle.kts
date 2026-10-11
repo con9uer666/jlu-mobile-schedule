@@ -54,6 +54,10 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            // The notification plugin resolves its icon and Gson type metadata
+            // dynamically, so R8/resource shrinking would remove required data.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
