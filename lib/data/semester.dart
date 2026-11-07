@@ -31,12 +31,14 @@ class Semester extends HiveObject {
   }) : sectionClock = normalizeSectionClock(sectionClock, sectionCount);
 
   int currentWeek(DateTime now) {
-    final diff = now
-        .difference(DateTime(startDate.year, startDate.month, startDate.day))
+    final diff = DateTime.utc(now.year, now.month, now.day)
+        .difference(
+          DateTime.utc(startDate.year, startDate.month, startDate.day),
+        )
         .inDays;
     if (diff < 0) return 0;
     final week = diff ~/ 7 + 1;
-    return week.clamp(1, totalWeeks);
+    return week;
   }
 
   String sectionStart(int section) => _split(section).$1;

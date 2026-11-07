@@ -199,11 +199,11 @@ class _StudyItemEditorPageState extends ConsumerState<StudyItemEditorPage> {
                     child: const Text('完成'),
                     onPressed: () {
                       setState(() {
-                        if (end)
+                        if (end) {
                           _end = value.isBefore(_start)
                               ? _start.add(const Duration(hours: 1))
                               : value;
-                        else {
+                        } else {
                           final duration = _end.difference(_start);
                           _start = value;
                           _end = value.add(duration);

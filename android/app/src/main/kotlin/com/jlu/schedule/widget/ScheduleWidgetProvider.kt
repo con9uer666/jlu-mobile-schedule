@@ -1,5 +1,6 @@
 package com.jlu.schedule.widget
 
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -11,7 +12,6 @@ import android.view.View
 import android.widget.RemoteViews
 import com.jlu.schedule.MainActivity
 import com.jlu.schedule.R
-import es.antonborri.home_widget.HomeWidgetPlugin
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Calendar
@@ -28,23 +28,61 @@ abstract class BaseScheduleWidgetProvider : AppWidgetProvider() {
 
     enum class Variant { SMALL, MEDIUM, LARGE }
 
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.action in setOf("com.jlu.schedule.widget.REFRESH", Intent.ACTION_DATE_CHANGED,
+                Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED)) {
+            val manager = AppWidgetManager.getInstance(context)
+            val ids = manager.getAppWidgetIds(android.content.ComponentName(context, javaClass))
+            if (ids.isNotEmpty()) onUpdate(context, manager, ids)
+        }
+    }
+
+    override fun onDisabled(context: Context) {
+        (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(refreshIntent(context))
+        super.onDisabled(context)
+    }
+
+    private fun refreshIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(
+        context, 0, Intent(context, javaClass).setAction("com.jlu.schedule.widget.REFRESH"),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
+    private fun scheduleRefresh(context: Context, courses: JSONArray?) {
+        val now = Calendar.getInstance()
+        val midnight = (now.clone() as Calendar).apply {
+            add(Calendar.DAY_OF_YEAR, 1)
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 1)
+        }
+        var next = midnight.timeInMillis
+        for (i in 0 until (courses?.length() ?: 0)) {
+            val parts = courses?.optJSONObject(i)?.optString("endTime")?.split(":") ?: continue
+            if (parts.size != 2) continue
+            val hour = parts[0].toIntOrNull() ?: continue
+            val minute = parts[1].toIntOrNull() ?: continue
+            val end = (now.clone() as Calendar).apply {
+                set(Calendar.HOUR_OF_DAY, hour); set(Calendar.MINUTE, minute); set(Calendar.SECOND, 1)
+            }.timeInMillis
+            if (end > now.timeInMillis && end < next) next = end
+        }
+        (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).setAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP, next, refreshIntent(context),
+        )
+    }
+
     override fun onUpdate(
         context: Context,
         manager: AppWidgetManager,
         ids: IntArray
     ) {
-        val prefs = HomeWidgetPlugin.getData(context)
-        val raw = prefs.getString("today_payload", null)
-        val payload = raw?.let { runCatching { JSONObject(it) }.getOrNull() }
+        val payload = WidgetPayloadStore.load(context)
+        val weekLabel = payload.optString("weekLabel")
+        val dayLabel = payload.optString("dayLabel")
+        val dateShort = payload.optString("dateShort")
 
-        val weekLabel = payload?.optString("weekLabel")?.takeIf { it.isNotEmpty() }
-            ?: prefs.getString("today_week_label", "") ?: ""
-        val dayLabel = payload?.optString("dayLabel")?.takeIf { it.isNotEmpty() }
-            ?: prefs.getString("today_day_label", "") ?: ""
-        val dateShort = payload?.optString("dateShort") ?: ""
-
-        val courses = payload?.optJSONArray("courses")
-        val tomorrowCourses = payload?.optJSONArray("tomorrowCourses")
+        val courses = payload.optJSONArray("courses")
+        val tomorrowCourses = payload.optJSONArray("tomorrowCourses")
+        scheduleRefresh(context, courses)
 
         for (id in ids) {
             val views = RemoteViews(context.packageName, layoutRes)

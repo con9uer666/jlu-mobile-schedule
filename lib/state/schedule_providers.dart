@@ -5,8 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/course.dart';
 import '../data/course_id.dart';
 import '../data/course_override.dart';
+import '../data/day_swap.dart';
 import '../data/semester.dart';
 import '../data/storage.dart';
+import '../services/course_schedule.dart';
+export '../services/course_schedule.dart' show EffectiveCourse;
 
 final currentSemesterProvider =
     StateNotifierProvider<CurrentSemesterController, Semester?>(
@@ -97,106 +100,24 @@ final overridesProvider = StreamProvider<List<CourseOverride>>((ref) async* {
   }
 });
 
-/// 本周实际呈现的课程块(应用完临时调课/停课后的结果)。
-class EffectiveCourse {
-  EffectiveCourse({
-    required this.course,
-    required this.dayOfWeek,
-    required this.startSection,
-    required this.endSection,
-    required this.location,
-    required this.isAdjusted,
-  });
-
-  final Course course;
-  final int dayOfWeek;
-  final int startSection;
-  final int endSection;
-  final String location;
-  final bool isAdjusted;
-}
-
-/// 合并 courses + overrides → 指定周该怎么摆。
-/// 跳过 kindCancel;kindMove 覆盖 dayOfWeek / section / location。
+/// UI callers read day swaps from storage; calculation itself is shared and pure.
 List<EffectiveCourse> effectiveCoursesForWeek(
   List<Course> courses,
   List<CourseOverride> overrides,
   int week, {
+  required Semester semester,
   DateTime? weekStart,
-}) {
-  final byCourse = <String, CourseOverride>{
-    for (final o in overrides.where((o) => o.week == week)) o.courseId: o,
-  };
-  final out = <EffectiveCourse>[];
-  for (final c in courses) {
-    if (!c.activeInWeek(week)) continue;
-    final o = byCourse[c.id];
-    if (o != null && o.isCancel) continue;
-    if (o != null && o.isMove) {
-      out.add(
-        EffectiveCourse(
-          course: c,
-          dayOfWeek: o.newDayOfWeek,
-          startSection: o.newStartSection,
-          endSection: o.newEndSection,
-          location: (o.newLocation?.isNotEmpty ?? false)
-              ? o.newLocation!
-              : c.location,
-          isAdjusted: true,
-        ),
-      );
-    } else {
-      out.add(
-        EffectiveCourse(
-          course: c,
-          dayOfWeek: c.dayOfWeek,
-          startSection: c.startSection,
-          endSection: c.endSection,
-          location: c.location,
-          isAdjusted: false,
-        ),
-      );
-    }
+}) => resolveWeekCourses(
+  semester: semester,
+  courses: courses,
+  overrides: overrides,
+  daySwaps: AppStorage.daySwaps.values.toList(),
+  week: week,
+);
+
+final daySwapsProvider = StreamProvider<List<DaySwap>>((ref) async* {
+  yield AppStorage.daySwaps.values.toList();
+  await for (final _ in AppStorage.daySwaps.watch()) {
+    yield AppStorage.daySwaps.values.toList();
   }
-  if (weekStart == null || AppStorage.daySwaps.isEmpty) return out;
-  final swaps = <int, int>{};
-  for (final s in AppStorage.daySwaps.values) {
-    final d = DateTime(s.targetDate.year, s.targetDate.month, s.targetDate.day);
-    final idx = d
-        .difference(DateTime(weekStart.year, weekStart.month, weekStart.day))
-        .inDays;
-    if (idx >= 0 && idx < 7) swaps[idx + 1] = s.sourceDate.weekday;
-  }
-  if (swaps.isEmpty) return out;
-  // 覆盖语义：目标日隐藏原课程，来源日只复制固定课程，忽略来源日临时调整。
-  final fixed = <EffectiveCourse>[
-    for (final c in courses)
-      if (c.activeInWeek(week))
-        EffectiveCourse(
-          course: c,
-          dayOfWeek: c.dayOfWeek,
-          startSection: c.startSection,
-          endSection: c.endSection,
-          location: c.location,
-          isAdjusted: false,
-        ),
-  ];
-  return fixed.where((e) => !swaps.containsKey(e.dayOfWeek)).map((e) {
-    final target = swaps.entries
-        .firstWhere(
-          (x) => x.value == e.dayOfWeek,
-          orElse: () => const MapEntry(0, 0),
-        )
-        .key;
-    return target == 0
-        ? e
-        : EffectiveCourse(
-            course: e.course,
-            dayOfWeek: target,
-            startSection: e.startSection,
-            endSection: e.endSection,
-            location: e.location,
-            isAdjusted: true,
-          );
-  }).toList();
-}
+});

@@ -1,15 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/course.dart';
-import '../data/course_id.dart';
 import '../data/providers/registry.dart';
 import '../data/raw_entry.dart';
 import '../data/school_provider.dart';
 import '../data/semester.dart';
 import '../data/storage.dart';
 import '../state/schedule_providers.dart';
-import 'course_colors.dart';
+import '../services/course_import.dart';
 import 'login_webview_page.dart';
 
 class ImportPage extends ConsumerStatefulWidget {
@@ -124,45 +122,10 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       startDate: startDate,
       totalWeeks: totalWeeks,
       sectionCount: _maxEndSection(entries),
+      sectionClock: AppStorage.semesters.get(xnxqdm)?.sectionClock,
     );
 
-    // 先在内存构建所有新课程对象，减少删旧→插新之间的空窗期
-    var i = 0;
-    final newCourses = <MapEntry<String, Course>>[];
-    for (final e in entries) {
-      final id = '$xnxqdm-$i';
-      newCourses.add(
-        MapEntry(
-          id,
-          Course(
-            id: id,
-            name: e.name,
-            teacher: e.teacher,
-            location: e.location,
-            dayOfWeek: e.dayOfWeek,
-            startSection: e.startSection,
-            endSection: e.endSection,
-            weeks: e.weeks,
-            colorIndex: CourseColors.stableIndex(e.name),
-          ),
-        ),
-      );
-      i++;
-    }
-
-    for (final old
-        in AppStorage.courses.values
-            .where(
-              (c) =>
-                  c.id.startsWith('$xnxqdm-') &&
-                  !isManualCourseId(xnxqdm, c.id),
-            )
-            .toList()) {
-      await old.delete();
-    }
-    for (final entry in newCourses) {
-      await AppStorage.courses.put(entry.key, entry.value);
-    }
+    await importCourses(xnxqdm, entries);
 
     await AppStorage.semesters.put(semester.id, semester);
     await ref.read(currentSemesterProvider.notifier).setCurrent(semester);

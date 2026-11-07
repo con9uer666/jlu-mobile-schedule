@@ -1,3 +1,4 @@
+import '../state/clock_provider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -15,6 +16,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   int filter = 0;
   @override
   Widget build(BuildContext context) {
+    ref.watch(clockProvider);
     final all =
         ref.watch(studyItemsProvider).asData?.value ?? const <StudyItem>[];
     final now = DateTime.now();

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
 import 'deep_link_router.dart';
+import 'notification_service.dart';
 
 /// 桌面 widget 点击 → 原生 MainActivity → 这里 → DeepLinkRouter。
 class WidgetLaunchHandler {
@@ -27,6 +28,7 @@ class WidgetLaunchHandler {
       }
     });
     await _drainInitial();
+    _schedule(NotificationService.consumeInitialDeepLink());
   }
 
   static Future<void> _drainInitial() async {
@@ -35,7 +37,9 @@ class WidgetLaunchHandler {
       if (raw != null && raw.isNotEmpty) _schedule(Uri.tryParse(raw));
     } on MissingPluginException {
       try {
-        final id = await _channel.invokeMethod<String>('consumeInitialCourseId');
+        final id = await _channel.invokeMethod<String>(
+          'consumeInitialCourseId',
+        );
         if (id != null && id.isNotEmpty) {
           _schedule(Uri.parse('schedule://course?id=$id'));
         }
@@ -55,5 +59,6 @@ class WidgetLaunchHandler {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       DeepLinkRouter.handle(uri);
     });
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 }

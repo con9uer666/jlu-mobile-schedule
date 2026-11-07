@@ -62,6 +62,9 @@
             android:label="课程表 中号">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="es.antonborri.home_widget.action.BACKGROUND" />
             </intent-filter>
             <meta-data
@@ -75,6 +78,9 @@
             android:label="课程表 大号">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="es.antonborri.home_widget.action.BACKGROUND" />
             </intent-filter>
             <meta-data
@@ -88,6 +94,9 @@
             android:label="课程表 小号">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="es.antonborri.home_widget.action.BACKGROUND" />
             </intent-filter>
             <meta-data

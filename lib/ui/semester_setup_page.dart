@@ -5,9 +5,16 @@ import '../data/semester.dart';
 import '../state/schedule_providers.dart';
 
 class SemesterSetupPage extends ConsumerStatefulWidget {
-  const SemesterSetupPage({super.key, this.isInitial = false});
+  const SemesterSetupPage({
+    super.key,
+    this.isInitial = false,
+    this.createNew = false,
+    this.existing,
+  });
 
   final bool isInitial;
+  final bool createNew;
+  final Semester? existing;
 
   @override
   ConsumerState<SemesterSetupPage> createState() => _SemesterSetupPageState();
@@ -38,7 +45,10 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
     _start = existing?.startDate ?? _nearestMonday(DateTime.now());
     _totalWeeks = existing?.totalWeeks ?? 20;
     _sectionCount = existing?.sectionCount ?? 12;
-    _clock = Semester.normalizeSectionClock(existing?.sectionClock, _sectionCount);
+    _clock = Semester.normalizeSectionClock(
+      existing?.sectionClock,
+      _sectionCount,
+    );
   }
 
   void _resizeClock(int count) {
@@ -142,9 +152,13 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
 
   Future<void> _save() async {
     if (_totalWeeks < 1 || _sectionCount < 1) return;
-    final existing = ref.read(currentSemesterProvider);
+    final existing = widget.createNew
+        ? null
+        : widget.existing ?? ref.read(currentSemesterProvider);
     final sem = Semester(
-      id: existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      id:
+          existing?.id ??
+          'manual-semester-${DateTime.now().microsecondsSinceEpoch}',
       name: _nameCtrl.text.trim().isEmpty ? '本学期' : _nameCtrl.text.trim(),
       startDate: _start,
       totalWeeks: _totalWeeks,
@@ -152,19 +166,24 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
       sectionClock: _clock,
     );
     await ref.read(currentSemesterProvider.notifier).setCurrent(sem);
-    if (mounted && !widget.isInitial) Navigator.of(context).pop();
+    if (mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     if (!_initialized) {
-      _initFrom(ref.read(currentSemesterProvider));
+      _initFrom(
+        widget.createNew
+            ? null
+            : widget.existing ?? ref.read(currentSemesterProvider),
+      );
       _initialized = true;
     }
 
     return CupertinoPageScaffold(
-      backgroundColor:
-          CupertinoColors.systemGroupedBackground.resolveFrom(context),
+      backgroundColor: CupertinoColors.systemGroupedBackground.resolveFrom(
+        context,
+      ),
       child: CustomScrollView(
         slivers: [
           CupertinoSliverNavigationBar(
@@ -176,83 +195,84 @@ class _SemesterSetupPageState extends ConsumerState<SemesterSetupPage> {
           ),
           SliverList(
             delegate: SliverChildListDelegate([
-            CupertinoFormSection.insetGrouped(
-              header: const Text('基础信息'),
-              children: [
-                CupertinoTextFormFieldRow(
-                  prefix: const Text('名称'),
-                  controller: _nameCtrl,
-                ),
-                CupertinoFormRow(
-                  prefix: const Text('开学日期'),
-                  child: CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: _pickStartDate,
-                    child: Text(
-                      '${_start.year}-${_start.month.toString().padLeft(2, '0')}-${_start.day.toString().padLeft(2, '0')} 周一',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            CupertinoFormSection.insetGrouped(
-              header: const Text('参数'),
-              children: [
-                CupertinoFormRow(
-                  prefix: const Text('总周数'),
-                  child: CupertinoSlidingSegmentedControl<int>(
-                    groupValue: _totalWeeks,
-                    children: const {
-                      16: Text('16'),
-                      18: Text('18'),
-                      20: Text('20'),
-                      22: Text('22'),
-                    },
-                    onValueChanged: (v) => setState(() => _totalWeeks = v ?? 20),
-                  ),
-                ),
-                CupertinoFormRow(
-                  prefix: const Text('每日节数'),
-                  child: CupertinoSlidingSegmentedControl<int>(
-                    groupValue: _sectionCount,
-                    children: const {
-                      10: Text('10'),
-                      12: Text('12'),
-                      14: Text('14'),
-                    },
-                    onValueChanged: (v) => setState(() {
-                      _sectionCount = v ?? 12;
-                      _resizeClock(_sectionCount);
-                    }),
-                  ),
-                ),
-              ],
-            ),
-            CupertinoFormSection.insetGrouped(
-              header: Row(
+              CupertinoFormSection.insetGrouped(
+                header: const Text('基础信息'),
                 children: [
-                  const Text('节次时间'),
-                  const Spacer(),
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: _applyDefaults,
-                    child: const Text('恢复默认', style: TextStyle(fontSize: 13)),
+                  CupertinoTextFormFieldRow(
+                    prefix: const Text('名称'),
+                    controller: _nameCtrl,
+                  ),
+                  CupertinoFormRow(
+                    prefix: const Text('开学日期'),
+                    child: CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: _pickStartDate,
+                      child: Text(
+                        '${_start.year}-${_start.month.toString().padLeft(2, '0')}-${_start.day.toString().padLeft(2, '0')} 周一',
+                      ),
+                    ),
                   ),
                 ],
               ),
-              children: [
-                for (var i = 0; i < _sectionCount; i++) _clockRow(i),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: CupertinoButton.filled(
-                onPressed: _save,
-                child: const Text('保存'),
+              CupertinoFormSection.insetGrouped(
+                header: const Text('参数'),
+                children: [
+                  CupertinoFormRow(
+                    prefix: const Text('总周数'),
+                    child: CupertinoSlidingSegmentedControl<int>(
+                      groupValue: _totalWeeks,
+                      children: const {
+                        16: Text('16'),
+                        18: Text('18'),
+                        20: Text('20'),
+                        22: Text('22'),
+                      },
+                      onValueChanged: (v) =>
+                          setState(() => _totalWeeks = v ?? 20),
+                    ),
+                  ),
+                  CupertinoFormRow(
+                    prefix: const Text('每日节数'),
+                    child: CupertinoSlidingSegmentedControl<int>(
+                      groupValue: _sectionCount,
+                      children: const {
+                        10: Text('10'),
+                        12: Text('12'),
+                        14: Text('14'),
+                      },
+                      onValueChanged: (v) => setState(() {
+                        _sectionCount = v ?? 12;
+                        _resizeClock(_sectionCount);
+                      }),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 20),
+              CupertinoFormSection.insetGrouped(
+                header: Row(
+                  children: [
+                    const Text('节次时间'),
+                    const Spacer(),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: _applyDefaults,
+                      child: const Text('恢复默认', style: TextStyle(fontSize: 13)),
+                    ),
+                  ],
+                ),
+                children: [
+                  for (var i = 0; i < _sectionCount; i++) _clockRow(i),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: CupertinoButton.filled(
+                  onPressed: _save,
+                  child: const Text('保存'),
+                ),
+              ),
+              const SizedBox(height: 20),
             ]),
           ),
         ],

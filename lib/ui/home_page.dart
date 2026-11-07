@@ -1,5 +1,4 @@
-import 'dart:async';
-
+import '../state/clock_provider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,26 +27,26 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> {
   PageController? _pageController;
   int? _displayedWeek;
+  String? _controllerSemester;
+  int? _controllerWeeks;
   bool _pushedInitialSetup = false;
-  Timer? _tick;
-
-  @override
-  void initState() {
-    super.initState();
-    _tick = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (mounted) setState(() {});
-    });
-  }
 
   @override
   void dispose() {
-    _tick?.cancel();
     _pageController?.dispose();
     super.dispose();
   }
 
-  void _ensureController(int totalWeeks, int initialWeek) {
-    if (_pageController == null) {
+  void _ensureController(Semester semester, int initialWeek) {
+    if (_pageController == null ||
+        _controllerSemester != semester.id ||
+        _controllerWeeks != semester.totalWeeks) {
+      final previous = _pageController;
+      if (previous != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
+      }
+      _controllerSemester = semester.id;
+      _controllerWeeks = semester.totalWeeks;
       _pageController = PageController(initialPage: initialWeek - 1);
       _displayedWeek = initialWeek;
     }
@@ -55,6 +54,8 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(clockProvider);
+    ref.watch(daySwapsProvider);
     final semester = ref.watch(currentSemesterProvider);
     final coursesAsync = ref.watch(coursesProvider);
     final overridesAsync = ref.watch(overridesProvider);
@@ -78,10 +79,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     _pushedInitialSetup = false;
 
     final realWeek = semester.currentWeek(DateTime.now());
-    _ensureController(
-      semester.totalWeeks,
-      realWeek.clamp(1, semester.totalWeeks),
-    );
+    _ensureController(semester, realWeek.clamp(1, semester.totalWeeks));
     final shownWeek = _displayedWeek ?? realWeek;
     final today = DateTime.now();
     return CupertinoPageScaffold(
@@ -129,7 +127,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                 realWeek: realWeek,
                 today: today,
                 status: shownWeek == realWeek
-                    ? currentStatus(semester, today)
+                    ? currentStatus(
+                        semester,
+                        today,
+                        courses: effectiveCoursesForWeek(
+                          coursesAsync.asData?.value ?? [],
+                          overridesAsync.asData?.value ?? [],
+                          realWeek,
+                          semester: semester,
+                        ).where((c) => c.dayOfWeek == today.weekday).toList(),
+                      )
                     : null,
                 onAdd: () => Navigator.of(context).push(
                   CupertinoPageRoute(builder: (_) => const CourseEditorPage()),
@@ -142,7 +149,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
                 onJumpToCurrent: () {
                   _pageController?.animateToPage(
-                    realWeek - 1,
+                    realWeek.clamp(1, semester.totalWeeks) - 1,
                     duration: const Duration(milliseconds: 300),
                     curve: Curves.easeOutCubic,
                   );
@@ -228,7 +235,11 @@ class _TopBar extends StatelessWidget {
                       Row(
                         children: [
                           Text(
-                            week == 0 ? '未开学' : '第 $week 周',
+                            realWeek == 0
+                                ? '未开学'
+                                : realWeek > semester.totalWeeks
+                                ? '学期已结束'
+                                : '第 $week 周',
                             style: TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w700,
@@ -358,6 +369,7 @@ class _WeekGridState extends State<_WeekGrid> {
       widget.courses,
       widget.overrides,
       widget.week,
+      semester: widget.semester,
       weekStart: widget.semester.startDate.add(
         Duration(days: (widget.week - 1) * 7),
       ),
@@ -380,7 +392,13 @@ class _WeekGridState extends State<_WeekGrid> {
         final sectionHeight = autoHeight.clamp(36.0, 60.0);
         final gridHeight = sectionHeight * widget.semester.sectionCount;
         final currentSection = widget.isCurrentWeek
-            ? currentStatus(widget.semester, DateTime.now()).section
+            ? currentStatus(
+                widget.semester,
+                DateTime.now(),
+                courses: effective
+                    .where((c) => c.dayOfWeek == today.weekday)
+                    .toList(),
+              ).section
             : null;
         final accent = CupertinoTheme.of(context).primaryColor;
         final accentResolved = CupertinoDynamicColor.resolve(accent, context);

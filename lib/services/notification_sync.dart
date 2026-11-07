@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/course_reminder_setting.dart';
@@ -7,7 +9,6 @@ import '../state/notification_settings_provider.dart';
 import '../state/schedule_providers.dart';
 import '../state/study_providers.dart';
 import 'notification_service.dart';
-import 'weekly_digest.dart';
 
 class NotificationSync {
   NotificationSync._(this._ref) {
@@ -17,10 +18,13 @@ class NotificationSync {
   final Ref _ref;
   late final NotificationRescheduler _rescheduler;
 
-  static void attach(Ref ref) {
+  static NotificationSync attach(Ref ref) {
     final sync = NotificationSync._(ref);
     sync._start();
+    return sync;
   }
+
+  void refresh() => _rescheduler.requestReschedule();
 
   void _start() {
     _rescheduler.requestReschedule();
@@ -36,11 +40,18 @@ class NotificationSync {
       notificationSettingsProvider,
       (_, _) => _rescheduler.requestReschedule(),
     );
-    AppStorage.courseReminders.watch().listen((_) {
+    final reminders = AppStorage.courseReminders.watch().listen((_) {
       _rescheduler.requestReschedule();
     });
-    AppStorage.daySwaps.watch().listen((_) {
+    final swaps = AppStorage.daySwaps.watch().listen((_) {
       _rescheduler.requestReschedule();
+    });
+    final timer = Timer.periodic(const Duration(hours: 1), (_) => refresh());
+    _ref.onDispose(() {
+      reminders.cancel();
+      swaps.cancel();
+      timer.cancel();
+      _rescheduler.dispose();
     });
   }
 
@@ -66,16 +77,15 @@ class NotificationSync {
       courses: courses,
       courseReminders: reminders,
       semester: semester,
+      overrides: AppStorage.overrides.values.toList(),
+      daySwaps: AppStorage.daySwaps.values.toList(),
+      weeklyDigestEnabled: notifSettings.weeklyDigestEnabled,
       coursesGlobalEnabled: notifSettings.coursesEnabled,
       defaultCourseLeadMinutes: notifSettings.defaultLeadMinutes,
-    );
-    await WeeklyDigest.maybeSchedule(
-      enabled: notifSettings.weeklyDigestEnabled,
-      semester: semester,
     );
   }
 }
 
-final notificationSyncProvider = Provider<void>((ref) {
-  NotificationSync.attach(ref);
-});
+final notificationSyncProvider = Provider<NotificationSync>(
+  NotificationSync.attach,
+);

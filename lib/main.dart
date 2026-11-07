@@ -14,6 +14,7 @@ import 'services/widget_bridge.dart';
 import 'services/widget_launch_handler.dart';
 import 'services/widget_sync.dart';
 import 'state/appearance_provider.dart';
+import 'state/clock_provider.dart';
 import 'ui/root_tab_scaffold.dart';
 
 Future<void> main() async {
@@ -82,7 +83,8 @@ class _ScheduleAppState extends ConsumerState<ScheduleApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      ref.read(notificationSyncProvider);
+      ref.invalidate(clockProvider);
+      ref.read(notificationSyncProvider).refresh();
       unawaited(ref.read(widgetSyncProvider).refresh());
     }
   }

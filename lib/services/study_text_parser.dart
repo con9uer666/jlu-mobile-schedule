@@ -100,8 +100,9 @@ class StudyTextParser {
     final colon = RegExp(
       r'(?<!\d)([01]?\d|2[0-3])[:：]([0-5]\d)',
     ).firstMatch(text);
-    if (colon != null)
+    if (colon != null) {
       return (int.parse(colon.group(1)!), int.parse(colon.group(2)!));
+    }
 
     final match = RegExp(
       r'(凌晨|早上|上午|中午|下午|晚上|今晚|明早|明晚)?([零〇一二两三四五六七八九十百\d]{1,3})点(?:(半)|([零〇一二两三四五六七八九十\d]{1,2})分?)?',
@@ -112,8 +113,9 @@ class StudyTextParser {
     if ((period.contains('下午') ||
             period.contains('晚上') ||
             period.contains('晚')) &&
-        hour < 12)
+        hour < 12) {
       hour += 12;
+    }
     if (period == '中午' && hour < 11) hour += 12;
     if (period == '凌晨' && hour == 12) hour = 0;
     if (period.isEmpty && kind == StudyItemKind.assignment && hour < 12) {

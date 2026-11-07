@@ -12,15 +12,28 @@ struct ScheduleProvider: TimelineProvider {
   }
 
   func getSnapshot(in context: Context, completion: @escaping (ScheduleEntry) -> Void) {
-    completion(ScheduleEntry(date: Date(), payload: PayloadStore.load()))
+    completion(ScheduleEntry(date: Date(), payload: PayloadStore.load().forDate(Date())))
   }
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<ScheduleEntry>) -> Void) {
     let now = Date()
-    let entry = ScheduleEntry(date: now, payload: PayloadStore.load())
-    // 5 分钟刷一次兜底;Dart 侧数据变化时会主动 reloadAllTimelines。
-    // 小粒度是为了配合"已下课则消失"的过滤逻辑。
-    let next = Calendar.current.date(byAdding: .minute, value: 5, to: now) ?? now.addingTimeInterval(300)
-    completion(Timeline(entries: [entry], policy: .after(next)))
+    let cal = Calendar.current
+    let cached = PayloadStore.load()
+    var dates = Set<Date>([now])
+    // Schedule midnight and class endings explicitly, without depending on a
+    // frequent background wake-up or on opening the phone app each morning.
+    for offset in 0...7 {
+      guard let day = cal.date(byAdding: .day, value: offset, to: cal.startOfDay(for: now)) else { continue }
+      if day > now { dates.insert(day) }
+      for course in cached.forDate(day).courses {
+        let parts = (course.endTime ?? "").split(separator: ":").compactMap { Int($0) }
+        if parts.count == 2,
+           let end = cal.date(bySettingHour: parts[0], minute: parts[1], second: 1, of: day), end > now {
+          dates.insert(end)
+        }
+      }
+    }
+    let entries = dates.sorted().map { ScheduleEntry(date: $0, payload: cached.forDate($0)) }
+    completion(Timeline(entries: entries, policy: .atEnd))
   }
 }

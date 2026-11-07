@@ -11,10 +11,6 @@ import '../data/school_provider.dart';
 ///
 /// pop 回来的 bundle 结构见 [SchoolProvider] 注释。
 ///
-/// 用 flutter_inappwebview 而不是 webview_flutter 的原因:
-/// 教务系统证书常见问题(国产 CA 未预置 / 域名错配)会让 WKWebView/Chromium
-/// 直接白屏,webview_flutter 不暴露 SSL 错误回调。这里用 InAppWebView 的
-/// onReceivedServerTrustAuthRequest 针对入口域名主动放行。
 class SchoolLoginPage extends StatefulWidget {
   const SchoolLoginPage({super.key, required this.provider});
 
@@ -30,19 +26,14 @@ class _SchoolLoginPageState extends State<SchoolLoginPage> {
   bool _loadError = false;
   int _progress = 0;
   String _hint = '请用统一身份认证登录,成功后会自动抓课表';
-  late final String _trustRootHost;
-
-  @override
-  void initState() {
-    super.initState();
-    _trustRootHost = widget.provider.trustRootHost;
-  }
 
   Future<void> _runFetcher() async {
     _fetching = true;
     setState(() => _hint = '登录成功,正在抓取课表...');
     try {
-      await _controller?.evaluateJavascript(source: widget.provider.fetcherScript);
+      await _controller?.evaluateJavascript(
+        source: widget.provider.fetcherScript,
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -54,7 +45,16 @@ class _SchoolLoginPageState extends State<SchoolLoginPage> {
 
   void _onBridgeMessage(String raw) {
     if (!mounted) return;
-    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    final Map<String, dynamic> decoded;
+    try {
+      decoded = jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      setState(() {
+        _fetching = false;
+        _hint = '课表数据格式错误，请重试';
+      });
+      return;
+    }
     if (decoded['ok'] != true) {
       setState(() {
         _fetching = false;
@@ -82,20 +82,14 @@ class _SchoolLoginPageState extends State<SchoolLoginPage> {
                   const Icon(CupertinoIcons.info_circle, size: 16),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      _hint,
-                      style: const TextStyle(fontSize: 12),
-                    ),
+                    child: Text(_hint, style: const TextStyle(fontSize: 12)),
                   ),
                   if (_progress > 0 && _progress < 100)
-                    Text(
-                      '$_progress%',
-                      style: const TextStyle(fontSize: 12),
-                    ),
+                    Text('$_progress%', style: const TextStyle(fontSize: 12)),
                   if (_loadError)
                     CupertinoButton(
                       padding: const EdgeInsets.only(left: 8),
-                      minSize: 0,
+                      minimumSize: Size.zero,
                       onPressed: () {
                         setState(() {
                           _loadError = false;
@@ -119,7 +113,8 @@ class _SchoolLoginPageState extends State<SchoolLoginPage> {
                     userAgent: widget.provider.userAgent,
                     javaScriptEnabled: true,
                     domStorageEnabled: true,
-                    mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+                    mixedContentMode:
+                        MixedContentMode.MIXED_CONTENT_NEVER_ALLOW,
                     useShouldOverrideUrlLoading: false,
                     transparentBackground: false,
                   ),
@@ -127,7 +122,13 @@ class _SchoolLoginPageState extends State<SchoolLoginPage> {
                     _controller = controller;
                     controller.addJavaScriptHandler(
                       handlerName: 'JwappBridge',
-                      callback: (args) {
+                      callback: (args) async {
+                        final url = await controller.getUrl();
+                        if (!mounted ||
+                            !_fetching ||
+                            !widget.provider.isLoggedIn(url?.toString() ?? '')) {
+                          return null;
+                        }
                         if (args.isNotEmpty) {
                           _onBridgeMessage(args.first.toString());
                         }
@@ -146,7 +147,8 @@ class _SchoolLoginPageState extends State<SchoolLoginPage> {
                     if (!mounted) return;
                     // 替换 webview_flutter 的 JavaScriptChannel(JwappBridge.postMessage)
                     // 为 InAppWebView 的 handler。注入一个 shim,让抓取脚本无需改写。
-                    await controller.evaluateJavascript(source: '''
+                    await controller.evaluateJavascript(
+                      source: '''
                       if (!window.JwappBridge) {
                         window.JwappBridge = {
                           postMessage: function(msg) {
@@ -154,7 +156,8 @@ class _SchoolLoginPageState extends State<SchoolLoginPage> {
                           }
                         };
                       }
-                    ''');
+                    ''',
+                    );
                     if (!_fetching) {
                       setState(() => _hint = '已加载:$url');
                     }
@@ -166,20 +169,6 @@ class _SchoolLoginPageState extends State<SchoolLoginPage> {
                   onProgressChanged: (_, p) {
                     if (!mounted) return;
                     setState(() => _progress = p);
-                  },
-                  onReceivedServerTrustAuthRequest: (_, challenge) async {
-                    final host = challenge.protectionSpace.host;
-                    // 放行信任根域及其所有子域,覆盖登录跳转链路(入口域 → SSO/CAS
-                    // 子域),解决教务/统一认证证书 CA 缺失导致的信任挑战被取消。
-                    if (host == _trustRootHost ||
-                        host.endsWith('.$_trustRootHost')) {
-                      return ServerTrustAuthResponse(
-                        action: ServerTrustAuthResponseAction.PROCEED,
-                      );
-                    }
-                    return ServerTrustAuthResponse(
-                      action: ServerTrustAuthResponseAction.CANCEL,
-                    );
                   },
                   onReceivedError: (_, request, error) {
                     if (!mounted) return;

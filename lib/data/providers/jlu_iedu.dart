@@ -17,10 +17,6 @@ class JluIeduProvider extends SchoolProvider {
   String get entryUrl =>
       'https://iedu.jlu.edu.cn/jwapp/sys/wdkb/*default/index.do?THEME=indigo&EMAP_LANG=zh';
 
-  // 登录会跳到 cas.jlu.edu.cn(TPass 统一身份认证),放行整个 jlu.edu.cn 根域。
-  @override
-  String get trustRootHost => 'jlu.edu.cn';
-
   @override
   String get userAgent =>
       'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
@@ -28,8 +24,11 @@ class JluIeduProvider extends SchoolProvider {
 
   @override
   bool isLoggedIn(String url) {
-    if (!url.contains('iedu.jlu.edu.cn')) return false;
-    return url.contains('/jwapp/sys/wdkb/');
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.scheme != 'https' || uri.host != 'iedu.jlu.edu.cn') {
+      return false;
+    }
+    return uri.path.startsWith('/jwapp/sys/wdkb/');
   }
 
   @override
@@ -51,15 +50,17 @@ class JluIeduProvider extends SchoolProvider {
         if (mask[i] == '1') weeks.add(i + 1);
       }
       if (weeks.isEmpty) continue;
-      out.add(CourseRawEntry(
-        name: name,
-        teacher: row['SKJS'] as String? ?? '',
-        location: row['JASMC'] as String? ?? '',
-        dayOfWeek: dayOfWeek,
-        startSection: startSection,
-        endSection: endSection,
-        weeks: weeks,
-      ));
+      out.add(
+        CourseRawEntry(
+          name: name,
+          teacher: row['SKJS'] as String? ?? '',
+          location: row['JASMC'] as String? ?? '',
+          dayOfWeek: dayOfWeek,
+          startSection: startSection,
+          endSection: endSection,
+          weeks: weeks,
+        ),
+      );
     }
     return out;
   }

@@ -1,4 +1,5 @@
 import '../data/semester.dart';
+import 'course_schedule.dart';
 
 class SectionStatus {
   SectionStatus({this.section, this.toEnd, this.toNext});
@@ -15,10 +16,18 @@ class SectionStatus {
 /// - 落在某节区间内 → section + toEnd
 /// - 在两节之间 → toNext(距下一节的起始)
 /// - 在第一节前或最后一节后 → noClass
-SectionStatus currentStatus(Semester sem, DateTime now) {
+SectionStatus currentStatus(
+  Semester sem,
+  DateTime now, {
+  required List<EffectiveCourse> courses,
+}) {
   final today = DateTime(now.year, now.month, now.day);
 
-  for (int i = 1; i <= sem.sectionCount; i++) {
+  final sections = <int>{
+    for (final c in courses)
+      for (var s = c.startSection; s <= c.endSection; s++) s,
+  }.toList()..sort();
+  for (final i in sections) {
     final startStr = sem.sectionStart(i);
     final endStr = sem.sectionEnd(i);
     final start = _parseTime(today, startStr);

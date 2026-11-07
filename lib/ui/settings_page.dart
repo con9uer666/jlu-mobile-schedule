@@ -230,7 +230,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                     title: Text('课程表'),
                     subtitle: Text('课程、作业、考试与个人待办'),
-                    additionalInfo: Text('1.0.0 (2)'),
+                    additionalInfo: Text('1.0.2 (4)'),
                   ),
                 ],
               ),
@@ -323,10 +323,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             onPressed: () {
               Navigator.of(ctx).pop();
               Navigator.of(context).push(
-                CupertinoPageRoute(builder: (_) => const SemesterSetupPage()),
+                CupertinoPageRoute(
+                  builder: (_) => const SemesterSetupPage(createNew: true),
+                ),
               );
             },
-            child: const Text('新建/编辑学期'),
+            child: const Text('新建学期'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              Navigator.of(context).push(
+                CupertinoPageRoute(
+                  builder: (_) => SemesterSetupPage(
+                    existing: ref.read(currentSemesterProvider),
+                  ),
+                ),
+              );
+            },
+            child: const Text('编辑当前学期'),
           ),
         ],
         cancelButton: CupertinoActionSheetAction(

@@ -29,10 +29,6 @@ class HhuJsxsdProvider extends SchoolProvider {
   @override
   String get entryUrl => 'https://jwxt.hhu.edu.cn/jsxsd/';
 
-  // 登录可能跳到河海的统一认证子域,放行整个 hhu.edu.cn 根域。
-  @override
-  String get trustRootHost => 'hhu.edu.cn';
-
   @override
   String get userAgent =>
       'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
@@ -40,10 +36,13 @@ class HhuJsxsdProvider extends SchoolProvider {
 
   @override
   bool isLoggedIn(String url) {
-    if (!url.contains('jwxt.hhu.edu.cn')) return false;
-    return url.contains('/jsxsd/framework/') ||
-        url.contains('/jsxsd/grsz/') ||
-        url.contains('/jsxsd/xskb/');
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.scheme != 'https' || uri.host != 'jwxt.hhu.edu.cn') {
+      return false;
+    }
+    return uri.path.startsWith('/jsxsd/framework/') ||
+        uri.path.startsWith('/jsxsd/grsz/') ||
+        uri.path.startsWith('/jsxsd/xskb/');
   }
 
   @override
@@ -64,15 +63,17 @@ class HhuJsxsdProvider extends SchoolProvider {
           ? weeksRaw.map((e) => (e as num).toInt()).toList()
           : const <int>[];
       if (weeks.isEmpty) continue;
-      out.add(CourseRawEntry(
-        name: name,
-        teacher: (row['teacher'] as String?) ?? '',
-        location: (row['location'] as String?) ?? '',
-        dayOfWeek: dow,
-        startSection: start,
-        endSection: end,
-        weeks: weeks,
-      ));
+      out.add(
+        CourseRawEntry(
+          name: name,
+          teacher: (row['teacher'] as String?) ?? '',
+          location: (row['location'] as String?) ?? '',
+          dayOfWeek: dow,
+          startSection: start,
+          endSection: end,
+          weeks: weeks,
+        ),
+      );
     }
     return out;
   }

@@ -11,8 +11,10 @@ struct TodayPayload: Decodable {
   let semesterName: String
   let courses: [CourseItem]
   let tomorrowCourses: [CourseItem]
+  var days: [String: TodayPayload]?
+  var date: String?
 
-  private enum CodingKeys: String, CodingKey { case updatedAt, weekLabel, dayLabel, dateShort, semesterName, courses, tomorrowCourses }
+  private enum CodingKeys: String, CodingKey { case updatedAt, weekLabel, dayLabel, dateShort, semesterName, courses, tomorrowCourses, days, date }
 
   init(from decoder: Decoder) throws {
     let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -22,6 +24,8 @@ struct TodayPayload: Decodable {
     dateShort = try c.decodeIfPresent(String.self, forKey: .dateShort)
     semesterName = try c.decode(String.self, forKey: .semesterName)
     courses = try c.decode([CourseItem].self, forKey: .courses)
+    days = try c.decodeIfPresent([String: TodayPayload].self, forKey: .days)
+    date = try c.decodeIfPresent(String.self, forKey: .date)
     tomorrowCourses = try c.decodeIfPresent([CourseItem].self, forKey: .tomorrowCourses) ?? []
   }
 
@@ -40,6 +44,22 @@ struct TodayPayload: Decodable {
     courses: [],
     tomorrowCourses: []
   )
+
+  static func dateKey(_ date: Date) -> String {
+    let c = Calendar.current.dateComponents([.year, .month, .day], from: date)
+    return String(format: "%04d-%02d-%02d", c.year!, c.month!, c.day!)
+  }
+
+  func forDate(_ target: Date) -> TodayPayload {
+    let key = Self.dateKey(target)
+    if let snapshot = days?[key] { return snapshot }
+    if date == key { return self }
+    let cal = Calendar.current
+    let weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][cal.component(.weekday, from: target) - 1]
+    return TodayPayload(updatedAt: updatedAt, weekLabel: "请打开应用更新",
+      dayLabel: weekday, dateShort: "\(cal.component(.month, from: target)).\(cal.component(.day, from: target))",
+      semesterName: semesterName, courses: [], tomorrowCourses: [])
+  }
 
   /// 今日剩余课程:endTime(HH:mm)解析后 >= now 才留。
   /// 解析失败的 defensive 保留,避免旧数据突然掉课。

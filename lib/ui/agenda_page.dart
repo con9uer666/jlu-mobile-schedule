@@ -1,3 +1,4 @@
+import '../state/clock_provider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -9,6 +10,7 @@ import '../data/semester.dart';
 import '../data/storage.dart';
 import '../data/study_item.dart';
 import '../services/notification_service.dart';
+import '../services/notification_sync.dart';
 import '../services/recurrence.dart';
 import '../state/agenda_providers.dart';
 import '../state/schedule_providers.dart';
@@ -53,11 +55,16 @@ class _AgendaPageState extends ConsumerState<AgendaPage> {
       ),
     );
     await AppStorage.settings.put(key, true);
-    if (ok == true) await NotificationService.requestPermissions();
+    if (ok == true) {
+      await NotificationService.requestPermissions();
+      ref.read(notificationSyncProvider).refresh();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(clockProvider);
+    ref.watch(daySwapsProvider);
     final semester = ref.watch(currentSemesterProvider);
     final courses =
         ref.watch(coursesProvider).asData?.value ?? const <Course>[];
@@ -167,6 +174,7 @@ class _AgendaPageState extends ConsumerState<AgendaPage> {
         courses,
         overrides,
         week,
+        semester: semester,
         weekStart: weekStart,
       );
       for (final entry in effective.where(
@@ -174,10 +182,11 @@ class _AgendaPageState extends ConsumerState<AgendaPage> {
       )) {
         final start = _clock(today, semester.sectionStart(entry.startSection));
         final end = _clock(today, semester.sectionEnd(entry.endSection));
-        if (start != null)
+        if (start != null) {
           result.add(
             _TimelineItem.course(entry.course, start, end, entry.location),
           );
+        }
       }
     }
     for (final event in events) {
@@ -188,8 +197,9 @@ class _AgendaPageState extends ConsumerState<AgendaPage> {
         maxCount: 8,
       );
       for (final occurrence in occurrences) {
-        if (occurrence.startAt.isBefore(tomorrow))
+        if (occurrence.startAt.isBefore(tomorrow)) {
           result.add(_TimelineItem.event(event, occurrence.startAt));
+        }
       }
     }
     for (final item in studyItems) {
@@ -221,13 +231,14 @@ class _AgendaPageState extends ConsumerState<AgendaPage> {
                 (day.isBefore(today) && today.difference(day).inDays <= 3),
         };
       }
-      if (include)
+      if (include) {
         result.add(
           _TimelineItem.study(
             item,
             overdue: day.isBefore(today) && !item.isCompleted,
           ),
         );
+      }
     }
     result.sort((a, b) {
       if (a.overdue != b.overdue) return a.overdue ? -1 : 1;
@@ -397,8 +408,9 @@ class _TimelineRow extends ConsumerWidget {
 
   Widget? _subtitle(_TimelineItem item) {
     final study = item.study;
-    if (study?.submissionMethod?.isNotEmpty == true)
+    if (study?.submissionMethod?.isNotEmpty == true) {
       return Text(study!.submissionMethod!);
+    }
     if (study?.kind == StudyItemKind.exam) return const Text('考试');
     if (study?.kind == StudyItemKind.assignment) return const Text('作业');
     if (study?.kind == StudyItemKind.personal) return const Text('个人待办');

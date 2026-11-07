@@ -1,3 +1,4 @@
+import '../state/clock_provider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -19,6 +20,7 @@ class StudyListPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(clockProvider);
     final items = ref.watch(studyItemsProvider);
     return CupertinoPageScaffold(
       backgroundColor: CupertinoColors.systemGroupedBackground.resolveFrom(
@@ -60,11 +62,12 @@ class StudyListPage extends ConsumerWidget {
               final upcoming = active
                   .where((i) => !overdue.contains(i))
                   .toList();
-              if (active.isEmpty)
+              if (active.isEmpty) {
                 return SliverFillRemaining(
                   hasScrollBody: false,
                   child: _EmptyStudy(title: title),
                 );
+              }
               return SliverPadding(
                 padding: const EdgeInsets.only(bottom: 100),
                 sliver: SliverList.list(

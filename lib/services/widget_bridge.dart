@@ -10,6 +10,7 @@ import '../data/course_override.dart';
 import '../data/day_swap.dart';
 import '../data/semester.dart';
 import '../ui/course_colors.dart';
+import 'course_schedule.dart';
 
 /// 把"今日课表"推给 Android/iOS/macOS 桌面小组件。
 /// 原生侧只负责渲染 — 周次筛选、排序、颜色索引都在 Dart 做好,原生读 JSON 就行。
@@ -170,6 +171,41 @@ class WidgetBridge {
     List<DaySwap> daySwaps = const [],
     required DateTime now,
   }) {
+    Map<String, dynamic> daily(DateTime date) => _buildDailyPayload(
+      semester: semester,
+      allCourses: allCourses,
+      overrides: overrides,
+      daySwaps: daySwaps,
+      now: date,
+    );
+    final today = DateTime(now.year, now.month, now.day);
+    final end = semester == null
+        ? today.add(const Duration(days: 7))
+        : DateTime(
+            semester.startDate.year,
+            semester.startDate.month,
+            semester.startDate.day + semester.totalWeeks * 7 + 7,
+          );
+    final count = end.difference(today).inDays.clamp(7, 730);
+    return {
+      ...daily(now),
+      'date': _formatDate(now),
+      'days': {
+        for (var i = 0; i <= count; i++)
+          _formatDate(DateTime(today.year, today.month, today.day + i)): daily(
+            DateTime(today.year, today.month, today.day + i),
+          ),
+      },
+    };
+  }
+
+  static Map<String, dynamic> _buildDailyPayload({
+    required Semester? semester,
+    required List<Course> allCourses,
+    required List<CourseOverride> overrides,
+    List<DaySwap> daySwaps = const [],
+    required DateTime now,
+  }) {
     final dow = now.weekday; // 1..7
     final week = semester?.currentWeek(now) ?? 0;
     final semesterCourses = semester == null
@@ -211,7 +247,11 @@ class WidgetBridge {
       'updatedAt': now.millisecondsSinceEpoch,
       'weekLabel': semester == null
           ? '未设置学期'
-          : (week == 0 ? '未开学' : '第 $week 周'),
+          : (week == 0
+                ? '未开学'
+                : week > semester.totalWeeks
+                ? '学期已结束'
+                : '第 $week 周'),
       'dayLabel': _weekdayLabel(dow),
       'dateShort': '${now.month}.${now.day}',
       'semesterName': semester?.name ?? '',
@@ -229,63 +269,15 @@ class WidgetBridge {
   }) {
     if (semester == null) return const [];
 
-    final normalizedDate = DateTime(date.year, date.month, date.day);
-    DaySwap? daySwap;
-    for (final swap in daySwaps) {
-      final target = swap.targetDate;
-      if (target.year == normalizedDate.year &&
-          target.month == normalizedDate.month &&
-          target.day == normalizedDate.day) {
-        daySwap = swap;
-        break;
-      }
-    }
-
-    // 整天调课采用来源日期的固定课表，不叠加临时调课。
-    if (daySwap != null) {
-      final source = daySwap.sourceDate;
-      final sourceWeek = semester.currentWeek(source);
-      final result = <_Today>[
-        for (final course in courses)
-          if (course.activeInWeek(sourceWeek) &&
-              course.dayOfWeek == source.weekday)
-            _Today(
-              course,
-              course.startSection,
-              course.endSection,
-              course.location,
-            ),
-      ];
-      result.sort((a, b) => a.startSection.compareTo(b.startSection));
-      return result;
-    }
-
-    final dateWeek = semester.currentWeek(normalizedDate);
-    final overridesByCourse = <String, CourseOverride>{
-      for (final override in overrides.where((item) => item.week == dateWeek))
-        override.courseId: override,
-    };
-    final result = <_Today>[];
-    for (final course in courses) {
-      if (!course.activeInWeek(dateWeek)) continue;
-      final override = overridesByCourse[course.id];
-      if (override != null && override.isCancel) continue;
-      final isMoved = override?.isMove == true;
-      final day = isMoved ? override!.newDayOfWeek : course.dayOfWeek;
-      if (day != normalizedDate.weekday) continue;
-      result.add(
-        _Today(
-          course,
-          isMoved ? override!.newStartSection : course.startSection,
-          isMoved ? override!.newEndSection : course.endSection,
-          isMoved && (override!.newLocation?.isNotEmpty ?? false)
-              ? override.newLocation!
-              : course.location,
-        ),
-      );
-    }
-    result.sort((a, b) => a.startSection.compareTo(b.startSection));
-    return result;
+    return resolveDateCourses(
+          semester: semester,
+          courses: courses,
+          overrides: overrides,
+          daySwaps: daySwaps,
+          date: date,
+        )
+        .map((e) => _Today(e.course, e.startSection, e.endSection, e.location))
+        .toList();
   }
 
   static String _weekdayLabel(int d) {

@@ -7,7 +7,6 @@ import android.graphics.Color
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import com.jlu.schedule.R
-import es.antonborri.home_widget.HomeWidgetPlugin
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -25,14 +24,9 @@ class ScheduleRemoteViewsFactory(
     override fun onCreate() {}
 
     override fun onDataSetChanged() {
-        val prefs = HomeWidgetPlugin.getData(context)
-        val raw = prefs.getString("today_payload", null)
-        items = if (raw == null) emptyList() else {
-            runCatching {
-                val arr = JSONObject(raw).optJSONArray("courses") ?: JSONArray()
-                BaseScheduleWidgetProvider.filterUpcoming(arr)
-            }.getOrDefault(emptyList())
-        }
+        items = BaseScheduleWidgetProvider.filterUpcoming(
+            WidgetPayloadStore.load(context).optJSONArray("courses") ?: JSONArray()
+        )
     }
 
     override fun onDestroy() {
